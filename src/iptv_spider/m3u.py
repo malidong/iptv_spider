@@ -2,7 +2,7 @@ import requests
 import os
 import re
 
-from iptv_spider.channel import Channel
+from src.iptv_spider.channel import Channel
 
 # 伪装为 PotPlayer 的 User-Agent
 HEADERS = {
@@ -34,7 +34,8 @@ class M3U8:
             response = requests.get(url, headers=HEADERS, timeout=10)
             response.raise_for_status()
             cwd = os.getcwd()
-            save_path = f"{cwd}/{url.split('/')[-1]}"
+            if not save_path:
+                save_path = f"{cwd}/{url.split('/')[-1]}"
             with open(save_path, 'w', encoding='utf-8') as f:
                 f.write(response.text)
             print(f"M3U 文件已保存到: {save_path}")
@@ -81,7 +82,7 @@ class M3U8:
         print(f"匹配到{str(len(filtered_channels))}个频道： {filtered_channels.keys()}")
         return filtered_channels
 
-    def get_best_channels(self, speed_limit: int = 3) -> dict:
+    def get_best_channels(self, speed_limit: int = 2) -> dict:
         """
         获得每个频道名的最大速度频道，如果已经有超出limit的频道则直接采用。
         :param speed_limit:

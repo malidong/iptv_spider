@@ -1,11 +1,37 @@
-from iptv_spider.m3u import M3U8
+from argparse import Namespace
+
+from src.iptv_spider.m3u import M3U8
 from datetime import datetime
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import argparse
+
+
+def arg_parser() -> Namespace:
+    parser = argparse.ArgumentParser(description="解析输入参数")
+
+    # 添加参数：url_or_path（可选，string 类型）
+    parser.add_argument(
+        "--url_or_path",
+        type=str,
+        default="https://live.iptv365.org/live.m3u",
+        help="URL 或文件路径，默认为 https://live.iptv365.org/live.m3u"
+    )
+
+    # 添加参数：filter（可选，string 类型）
+    parser.add_argument(
+        "--filter",
+        type=str,
+        default=r'\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b',
+        help="正则匹配，默认匹配CCTV频道"
+    )
+
+    # 解析命令行参数
+    params = parser.parse_args()
+    return params
 
 
 # 主程序
-def main(m3u_url, regex_filter: str = r'\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b'):
+def main(m3u_url, regex_filter: str):
     # 下载 M3U 文件
     m = M3U8(path=m3u_url, regex_filter=regex_filter)
     best = m.get_best_channels()
@@ -34,5 +60,6 @@ def main(m3u_url, regex_filter: str = r'\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b')
 
 
 if __name__ == "__main__":
-    M3U_FILE_URL = "https://live.iptv365.org/live.m3u"
-    main(M3U_FILE_URL)
+    args = arg_parser()
+    main(m3u_url=args.url_or_path,
+         regex_filter=args.filter)

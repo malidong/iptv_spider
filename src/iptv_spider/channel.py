@@ -1,6 +1,9 @@
+from math import floor
+
 import requests
 import subprocess
 import time
+import os
 import m3u8
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urljoin
@@ -35,7 +38,9 @@ class Channel:
         if self.is_direct:
             self.speed = self.__test_direct_bandwidth()
         else:
-            self.speed = self.__test_m3u8_bandwidth()
+            cpu_threads = os.cpu_count()
+            self.speed = self.__test_m3u8_bandwidth(max_ts=int(cpu_threads) + (cpu_threads > int(cpu_threads)),
+                                                    max_workers=floor(cpu_threads / 2))
         print(f"测试频道速度结束: {self.speed}")
         return self.speed
 
@@ -96,7 +101,7 @@ class Channel:
                     except Exception as e:
                         return 0.0
             self.resolution = self.get_video_resolution(ts_url=ts_urls[0])
-            return sum(results) / len(results)
+            return max(results)
         except requests.exceptions.RequestException as e:
             return 0.0
         except Exception as e:
