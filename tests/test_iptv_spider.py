@@ -11,11 +11,11 @@ class TestM3U8(unittest.TestCase):
     __slots__ = "m"
 
     def setUp(self):
-        self.m:M3U8 = M3U8(path="https://live.iptv365.org/live.m3u")
+        self.m: M3U8 = M3U8(path="https://live.iptv365.org/live.m3u", regex_filter="*")
 
     def test_download_m3u8_file(self):
         trial_url = "https://live.iptv365.org/live.m3u"
-        self.assertIsInstance(self.m.download_m3u8_file(url=trial_url,regex_filter="*"), str)
+        self.assertIsInstance(self.m.download_m3u8_file(url=trial_url), str)
 
 
 if __name__ == '__main__':
