@@ -10,7 +10,7 @@ from src.iptv_spider.m3u import M3U8
 class TestM3U8(unittest.TestCase):
     __slots__ = "m"
 
-    def __init__(self):
+    def setUp(self):
         self.m = M3U8(path="https://live.iptv365.org/live.m3u")
         super().__init__()
 
