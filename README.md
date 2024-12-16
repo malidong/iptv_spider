@@ -56,11 +56,11 @@ iptv-spider --output_dir "./results"
 
 The following command-line arguments are supported:
 
-| Parameter         | Default Value                                         | Description                                                                        |
-|-------------------|------------------------------------------------------|------------------------------------------------------------------------------------|
-| `--url_or_path`   | `https://live.iptv365.org/live.m3u`                  | URL or local path of the M3U8 file.                                               |
-| `--filter`        | \\b(cctv|CCTV)-?(?:[1-9]\|1[0-7]\|5\\+?)\\b          | Regular expression for filtering channel names.                                     |
-| `--output_dir`    | `.`                                                  | Directory to save the results, defaults to the current directory.                 |
+| Parameter         | Default Value                                | Description                                                                        |
+|-------------------|----------------------------------------------|------------------------------------------------------------------------------------|
+| `--url_or_path`   | `https://live.iptv365.org/live.m3u`          | URL or local path of the M3U8 file.                                               |
+| `--filter`        | \\b(cctv\|CCTV)-?(?:[1-9]\|1[0-7]\|5\\+?)\\b | Regular expression for filtering channel names.                                     |
+| `--output_dir`    | `.`                                          | Directory to save the results, defaults to the current directory.                 |
 
 ---
 
