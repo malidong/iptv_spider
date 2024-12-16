@@ -1,0 +1,5 @@
+[flake8]
+select=E,W,F
+exclude='.nox,*.egg,build,data'
+per-file-ignores=
+    *.py:E501
