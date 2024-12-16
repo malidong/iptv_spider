@@ -9,7 +9,7 @@ import re
 import sys
 import requests
 
-from channel import Channel
+from iptv_spider.channel import Channel
 
 # 伪装为 PotPlayer 的 User-Agent
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
