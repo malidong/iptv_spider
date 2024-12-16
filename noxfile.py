@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # pylint: disable=line-too-long
 """
 # this file is *not* meant to cover or endorse the use of nox or pytest or

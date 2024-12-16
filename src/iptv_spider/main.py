@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 """
-# This is
+# This is the entry module for iptv_spider.
 """
 from argparse import Namespace
 from datetime import datetime

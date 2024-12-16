@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 # pylint: disable=line-too-long,broad-exception-caught
 """
 M3U8 class to manage downloaded m3u8 contents,
