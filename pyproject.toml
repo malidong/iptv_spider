@@ -138,7 +138,7 @@ test = ["coverage"]
 [project.urls]
 "Homepage" = "https://github.com/malidong/iptv_spider"
 "Bug Reports" = "https://github.com/malidong/iptv_spider/issues"
-# "Funding" = "https://donate.pypi.org"
+#"Funding" = "https://donate.pypi.org"
 "Say Thanks!" = "https://hooks.slack.com/services/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"
 "Source" = "https://github.com/malidong/iptv_spider.git"
 
