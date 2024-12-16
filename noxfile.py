@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=line-too-long
 """
-# this file is *not* meant to cover or endorse the use of nox or pytest or
+# This file is *not* meant to cover or endorse the use of nox, pytest, or
 # testing in general,
 #
-#  It's meant to show the use of:
+# It's meant to show the use of:
 #
-#  - check-manifest
-#     confirm items checked into vcs are in your sdist
-#  - readme_renderer (when using a reStructuredText README)
-#     confirms your long_description will render correctly on PyPI.
+# - check-manifest
+#     Confirms items checked into VCS are in your source distribution (sdist).
+# - readme_renderer (when using a reStructuredText README)
+#     Ensures your long_description will render correctly on PyPI.
 #
-#  and also to help confirm pull requests to this project.
+# Also, it is intended to help confirm pull requests to this project.
 """
 import os
 
@@ -26,9 +26,15 @@ nox.options.needs_version = ">= 2024.3.2"
 @nox.session
 def lint(session):
     """
-    针对session用flake8进行代码规范性检测。
-    :param session: current session
-    :return:
+    Perform code style checking using flake8 for the session.
+
+    This session installs flake8 and runs it on the codebase, excluding
+    specific directories and files such as .nox, .egg, build, and data.
+    It selects errors and warnings related to style (E), whitespace (W),
+    and function errors (F).
+
+    :param session: Current session
+    :return: None
     """
     session.install("flake8")
     session.run(
@@ -40,9 +46,18 @@ def lint(session):
 @nox.session
 def build_and_check_dists(session):
     """
-    在session中安装测试需要的库并执行build测试。
-    :param session:
-    :return:
+    Install necessary libraries for testing and execute build checks.
+
+    This session installs the required dependencies like build,
+    check-manifest, and twine. It also runs check-manifest to confirm that
+    all files checked into version control are included in the source distribution,
+    followed by running the build and twine check commands to ensure the package is valid.
+
+    If the project uses a README in reStructuredText format, you can uncomment
+    the session.install("readme_renderer") line.
+
+    :param session: Current session
+    :return: None
     """
     session.install("build", "check-manifest >= 0.42", "twine")
     # If your project uses README.rst, uncomment the following:
@@ -56,9 +71,15 @@ def build_and_check_dists(session):
 @nox.session(python=["3.11", "3.12", "3.13"])
 def tests(session):
     """
-    针对3.11, 3.12, 3.13版本的Python进行测试。
-    :param session: current session
-    :return:
+    Run tests for Python versions 3.11, 3.12, and 3.13.
+
+    This session installs pytest, builds and checks the distributions,
+    and runs the tests for the specified Python versions. It checks that the
+    distributions were generated correctly and installs the generated distribution
+    before running the tests.
+
+    :param session: Current session
+    :return: None
     """
     session.install("pytest")
     build_and_check_dists(session)
