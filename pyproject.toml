@@ -110,7 +110,7 @@ classifiers = [
 #
 # For an analysis of this field vs pip's requirements files see:
 # https://packaging.python.org/discussions/install-requires-vs-requirements/
-dependencies = ["m3u8==6.0.0","requests==2.32.3"]
+dependencies = ["m3u8==6.0.0", "requests==2.32.3"]
 
 # List additional groups of dependencies here (e.g. development
 # dependencies). Users will be able to install these using the "extras"
@@ -140,7 +140,7 @@ test = ["coverage"]
 "Bug Reports" = "https://github.com/malidong/iptv_spider/issues"
 # "Funding" = "https://donate.pypi.org"
 "Say Thanks!" = "https://hooks.slack.com/services/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"
-"Source" = "https://github.com/malidong/iptv_spider"
+"Source" = "https://github.com/malidong/iptv_spider.git"
 
 # The following would provide a command line executable called `sample`
 # which executes the function `main` from this package when invoked.
