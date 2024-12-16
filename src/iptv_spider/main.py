@@ -11,6 +11,7 @@ import argparse
 from iptv_spider.m3u import M3U8
 from iptv_spider.logger import logger
 
+
 def arg_parser() -> Namespace:
     """
     Parse command-line arguments to get the download URL and filter pattern (optional).
