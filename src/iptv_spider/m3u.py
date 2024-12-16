@@ -1,16 +1,28 @@
-import requests
+# pylint: disable=line-too-long,broad-exception-caught
+"""
+M3U8 class to manage downloaded m3u8 contents,
+with function to get a best channel in channels with the same name.
+"""
+
 import os
 import re
+import sys
+import requests
 
-from src.iptv_spider.channel import Channel
+from channel import Channel
 
 # 伪装为 PotPlayer 的 User-Agent
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"
-}
+HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                         "AppleWebKit/537.36 (KHTML, like Gecko) "
+                         "Chrome/90.0.4430.212 Safari/537.36"}
 
 
 class M3U8:
+    """
+    M3U8 class to manage downloaded m3u8 contents.
+    black_servers list will store the server with speed 0.
+    Speed test will skip when the server in black_servers list.
+    """
     __slots__ = ("url",
                  "regex_filter",
                  "channels",
@@ -42,10 +54,10 @@ class M3U8:
             return save_path
         except requests.exceptions.RequestException as e:
             print(f"错误: 无法下载 M3U 文件 - {str(e)}")
-            exit(-1)
+            sys.exit(-1)
         except Exception as e:
             print(f"错误: 下载 M3U 文件时发生异常 - {str(e)}")
-            exit(-1)
+            sys.exit(-1)
 
     def load_file(self, file_path: str, regex_filter: str = None) -> dict:
         """

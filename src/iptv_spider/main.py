@@ -1,13 +1,19 @@
+"""
+# This is
+"""
 from argparse import Namespace
-
-from src.iptv_spider.m3u import M3U8
 from datetime import datetime
 import json
 import argparse
+from iptv_spider.m3u import M3U8
 
 
 def arg_parser() -> Namespace:
-    parser = argparse.ArgumentParser(description="解析输入参数")
+    """
+    从参数读取下载地址和匹配模式，可以为空。
+    :return:
+    """
+    parser = argparse.ArgumentParser(description="从参数读取下载地址(url_or_path)和匹配模式(filter)，可以为空。")
 
     # 添加参数：url_or_path（可选，string 类型）
     parser.add_argument(
@@ -32,6 +38,12 @@ def arg_parser() -> Namespace:
 
 # 主程序
 def main(m3u_url, regex_filter: str):
+    """
+    URL或者本地的path读取iptv的列表，根据regex_filter对频道名进行过滤，获取过滤后同名频道中速度最好的url。
+    :param m3u_url: 需要下载的m3u8地址，支持本地地址。
+    :param regex_filter: 频道名匹配用正则表达式。
+    :return:
+    """
     # 下载 M3U 文件
     m = M3U8(path=m3u_url, regex_filter=regex_filter)
     best = m.get_best_channels()

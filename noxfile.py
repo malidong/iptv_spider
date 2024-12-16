@@ -1,3 +1,5 @@
+# pylint: disable=line-too-long
+"""
 # this file is *not* meant to cover or endorse the use of nox or pytest or
 # testing in general,
 #
@@ -9,7 +11,7 @@
 #     confirms your long_description will render correctly on PyPI.
 #
 #  and also to help confirm pull requests to this project.
-
+"""
 import os
 
 import nox
@@ -22,6 +24,11 @@ nox.options.needs_version = ">= 2024.3.2"
 
 @nox.session
 def lint(session):
+    """
+    针对session用flake8进行代码规范性检测。
+    :param session: current session
+    :return:
+    """
     session.install("flake8")
     session.run(
         "flake8", "--exclude", ".nox,*.egg,build,data",
@@ -31,6 +38,11 @@ def lint(session):
 
 @nox.session
 def build_and_check_dists(session):
+    """
+    在session中安装测试需要的库并执行build测试。
+    :param session:
+    :return:
+    """
     session.install("build", "check-manifest >= 0.42", "twine")
     # If your project uses README.rst, uncomment the following:
     # session.install("readme_renderer")
@@ -42,6 +54,11 @@ def build_and_check_dists(session):
 
 @nox.session(python=["3.11", "3.12", "3.13"])
 def tests(session):
+    """
+    针对3.11, 3.12, 3.13版本的Python进行测试。
+    :param session: current session
+    :return:
+    """
     session.install("pytest")
     build_and_check_dists(session)
 
