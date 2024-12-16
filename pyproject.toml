@@ -48,7 +48,7 @@ description = "A Python project for get iptv channels with the best network spee
 #
 # This field corresponds to the "Description" metadata field:
 # https://packaging.python.org/specifications/core-metadata/#description-optional
-readme = "README.md"
+readme = "README.en-US.md"
 
 # Specify which Python versions you support. In contrast to the
 # 'Programming Language' classifiers in this file, 'pip install' will check this
@@ -145,7 +145,7 @@ test = ["coverage"]
 # The following would provide a command line executable called `sample`
 # which executes the function `main` from this package when invoked.
 [project.scripts]
-iptv_spider = "iptv_spider:main"
+iptv-spider = "iptv_spider:main"
 
 # [project.entry-points]
 # iptv_spider = "iptv_spider:main"
