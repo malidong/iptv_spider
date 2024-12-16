@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=line-too-long,broad-exception-caught
 """
-M3U8 class to manage downloaded m3u8 contents,
-with function to get the best channel among channels with the same name.
+M3U8 class to manage and process M3U8 playlist files.
+This includes downloading M3U8 files, filtering channels by regex, and selecting the best channel based on download speed.
 """
 
 import os
@@ -14,23 +14,33 @@ from iptv_spider.channel import Channel
 from iptv_spider.logger import logger
 
 # Simulating PotPlayer's User-Agent
-HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                         "AppleWebKit/537.36 (KHTML, like Gecko) "
-                         "Chrome/90.0.4430.212 Safari/537.36"}
+HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                  "AppleWebKit/537.36 (KHTML, like Gecko) "
+                  "Chrome/90.0.4430.212 Safari/537.36"
+}
 
 
 class M3U8:
     """
-    M3U8 class to manage downloaded m3u8 contents.
-    The `black_servers` list stores servers with a speed of 0.
-    Speed tests will skip servers in the `black_servers` list.
+    A class to manage M3U8 playlist files and associated channels.
+
+    Attributes:
+        url (str): URL or path to the M3U8 file.
+        regex_filter (str): Regex pattern to filter channel names.
+        channels (dict): A dictionary containing channel objects grouped by name.
+        black_servers (list): A list of servers to avoid during speed tests due to poor performance.
     """
-    __slots__ = ("url",
-                 "regex_filter",
-                 "channels",
-                 "black_servers")
+    __slots__ = ("url", "regex_filter", "channels", "black_servers")
 
     def __init__(self, path: str, regex_filter: str):
+        """
+        Initialize an M3U8 object by loading channels from a file or URL.
+
+        Args:
+            path (str): Path or URL of the M3U8 file.
+            regex_filter (str): Regex pattern to filter channel names.
+        """
         if path.startswith("http"):
             path = self.download_m3u8_file(url=path)
         self.regex_filter: str = regex_filter
@@ -39,10 +49,14 @@ class M3U8:
 
     def download_m3u8_file(self, url: str, save_path: str = None) -> str:
         """
-        Download file from the internet.
-        :param url: HTTP URL of the m3u8 file
-        :param save_path: Local path to save the m3u8 file
-        :return:
+        Download an M3U8 playlist file from the given URL.
+
+        Args:
+            url (str): HTTP URL of the M3U8 file.
+            save_path (str, optional): Local path to save the downloaded file. Defaults to current directory.
+
+        Returns:
+            str: Local file path of the downloaded M3U8 file.
         """
         try:
             response = requests.get(url, headers=HEADERS, timeout=10)
@@ -63,10 +77,14 @@ class M3U8:
 
     def load_file(self, file_path: str, regex_filter: str = None) -> dict:
         """
-        Load channels from the m3u8 file.
-        :param file_path: Path of the m3u8 file to load
-        :param regex_filter: Regex filter for channel names; only load matching channels.
-        :return: A dictionary of filtered channels
+        Load and parse an M3U8 playlist file into channels.
+
+        Args:
+            file_path (str): Path to the M3U8 file.
+            regex_filter (str, optional): Regex filter for channel names. Defaults to the instance's regex_filter.
+
+        Returns:
+            dict: A dictionary mapping channel names to lists of Channel objects.
         """
         if not regex_filter:
             regex_filter = self.regex_filter
@@ -79,55 +97,67 @@ class M3U8:
                     break
 
                 if line.startswith("#EXTINF"):
-                    # Extract meta information
+                    # Extract meta information and channel name
                     meta = line.split(",")[0].strip()
-                    # Extract channel name
                     current_name = line.split(",")[-1].strip()
                     if not re.match(regex_filter, current_name):
                         continue
 
+                    # Extract media URL
                     media_url = f.readline().strip()
-                    c = Channel(meta=meta,
-                                channel_name=current_name,
-                                media_url=media_url)
+                    channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
+
+                    # Add the channel to the dictionary
                     if current_name not in filtered_channels:
-                        filtered_channels[current_name] = [c]
+                        filtered_channels[current_name] = [channel]
                     else:
-                        filtered_channels[current_name].append(c)
-        logger.info(f"Matched {str(len(filtered_channels))} channels: {filtered_channels.keys()}")
+                        filtered_channels[current_name].append(channel)
+
+        logger.info(f"Matched {len(filtered_channels)} channels: {list(filtered_channels.keys())}")
         return filtered_channels
 
     def get_best_channels(self, speed_limit: int = 2) -> dict:
         """
-        Get the fastest channel for each channel name.
-        If a channel exceeds the speed limit, it will be chosen directly.
-        :param speed_limit: Speed limit for selecting channels (in MB/s).
-        :return: A dictionary of the best channels.
+        Select the best channel (fastest download speed) for each unique channel name.
+
+        Args:
+            speed_limit (int): Speed threshold (in MB/s). Channels exceeding this speed are immediately selected.
+
+        Returns:
+            dict: A dictionary mapping channel names to their best Channel object.
         """
         best_channels: dict[str, Channel] = {}
         for channel_name, channels in self.channels.items():
-            for c in channels:
-                if c.media_url.split('/')[2] in self.black_servers:
-                    logger.info(f"Skip black server: {c.media_url.split('/')[2]}")
+            for channel in channels:
+                # Skip blacklisted servers
+                server = channel.media_url.split('/')[2]
+                if server in self.black_servers:
+                    logger.info(f"Skipping blacklisted server: {server}")
                     continue
 
-                speed = c.get_speed()
+                # Test channel speed
+                speed = channel.get_speed()
 
+                # Blacklist servers with zero speed
                 if speed == 0.0:
-                    self.black_servers.append(c.media_url.split('/')[2])
+                    self.black_servers.append(server)
 
+                # Update the best channel for this name
                 if channel_name not in best_channels:
-                    best_channels[channel_name] = c
+                    best_channels[channel_name] = channel
                 elif speed > best_channels[channel_name].speed:
-                    best_channels[channel_name] = c
+                    best_channels[channel_name] = channel
 
+                # If speed exceeds the limit, select immediately
                 if speed > speed_limit * 1024 * 1024:
                     logger.info(
-                        f"{channel_name} Found channel with speed {str(speed)}, "
-                        f"skip other channels with the same name.")
+                        f"{channel_name}: Found a channel with speed {speed}, "
+                        f"skipping other channels with the same name."
+                    )
                     break
 
-            if best_channels[channel_name].speed == 0:
+            # Remove channels with no valid speed
+            if best_channels.get(channel_name, None) and best_channels[channel_name].speed == 0:
                 best_channels.pop(channel_name, None)
 
         return best_channels
