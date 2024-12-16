@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ssh-key: ${{ secrets.IPTV_SPIDER_SECRET }}
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
