@@ -78,11 +78,11 @@ def main(m3u_url: str, regex_filter: str, output_dir: str):
 
     # Create an M3U8 object and load channels
     logger.info(f"Processing M3U8 playlist from: {m3u_url}")
-    m3u8 = M3U8(path=m3u_url, regex_filter=regex_filter)
-    best_channels_dict = m3u8.get_best_channels()
+    m3u8: M3U8 = M3U8(path=m3u_url, regex_filter=regex_filter)
+    best_channels_dict: dict = m3u8.get_best_channels()
 
     # Prepare results for saving
-    best_channels = {}
+    best_channels: dict = {}
     for channel_name, channel in best_channels_dict.items():
         best_channels[channel_name] = {
             "name": channel.channel_name,
@@ -93,13 +93,13 @@ def main(m3u_url: str, regex_filter: str, output_dir: str):
         }
 
     # Save filtered channels to a JSON file
-    json_filename = os.path.join(output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json")
+    json_filename: str = os.path.join(output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json")
     with open(json_filename, 'w', encoding='utf-8') as json_file:
         json.dump(best_channels, json_file, indent=4)
     logger.info(f"Filtered channel details saved to: {json_filename}")
 
     # Save results to an M3U file
-    m3u_filename = os.path.join(output_dir, 'best_channels.m3u')
+    m3u_filename: str = os.path.join(output_dir, 'best_channels.m3u')
     with open(m3u_filename, 'w', encoding='utf-8') as m3u_file:
         for channel_name, channel_info in best_channels.items():
             if channel_info["speed"] > 0.3 * 1024 * 1024:  # Minimum speed threshold: 0.3 MB/s

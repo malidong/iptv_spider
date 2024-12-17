@@ -56,12 +56,12 @@ class Channel:
             channel_name (str): Name of the channel.
             media_url (str): Media stream URL.
         """
-        self.meta = meta
-        self.channel_name = channel_name
-        self.media_url = media_url
-        self.is_direct = media_url.endswith("m3u") or media_url.endswith("m3u8")
-        self.speed = None
-        self.resolution = None
+        self.meta: str = meta
+        self.channel_name: str = channel_name
+        self.media_url: str = media_url
+        self.is_direct: bool = media_url.endswith("m3u") or media_url.endswith("m3u8")
+        self.speed: float = -1
+        self.resolution: str = "Unknown"
 
     def get_speed(self) -> float:
         """
@@ -99,11 +99,11 @@ class Channel:
                 "-of", "csv=p=0",
                 ts_url
             ]
-            result = subprocess.run(command,
-                                    capture_output=True,
-                                    text=True,
-                                    timeout=10,
-                                    check=False)
+            result: subprocess.CompletedProcess = subprocess.run(command,
+                                                                 capture_output=True,
+                                                                 text=True,
+                                                                 timeout=10,
+                                                                 check=False)
             if result.returncode == 0:
                 resolution = result.stdout.strip()
                 return resolution if resolution else None
@@ -127,16 +127,16 @@ class Channel:
             float: Maximum download speed across tested TS segments.
         """
         try:
-            m3u8_content = requests.get(self.media_url, headers=HEADERS, timeout=10).text
+            m3u8_content: str = requests.get(self.media_url, headers=HEADERS, timeout=10).text
             playlist = m3u8.loads(m3u8_content)
 
-            ts_urls = [segment.uri for segment in playlist.segments]
+            ts_urls: list = [segment.uri for segment in playlist.segments]
             if not ts_urls:
                 return 0
 
-            ts_urls = ts_urls[:max_ts]
+            ts_urls: list = ts_urls[:max_ts]
 
-            results = []
+            results: list = []
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 futures = [executor.submit(self.__test_download_speed, ts_url) for ts_url in ts_urls]
                 for future in as_completed(futures):
@@ -166,13 +166,13 @@ class Channel:
             float: Download speed in bytes per second.
         """
         if not m3u8_base_url:
-            m3u8_base_url = self.media_url
+            m3u8_base_url: str = self.media_url
         if not ts_url.startswith('http'):
-            ts_url = urljoin(m3u8_base_url, ts_url)
+            ts_url: str = urljoin(m3u8_base_url, ts_url)
         try:
             logger.info(f"Testing download: {ts_url}")
-            start_time = time.time()
-            response = requests.get(ts_url, headers=HEADERS, stream=True, timeout=20)
+            start_time: float = time.time()
+            response: requests.Response = requests.get(ts_url, headers=HEADERS, stream=True, timeout=20)
             response.raise_for_status()
 
             total_size = 0
@@ -183,17 +183,16 @@ class Channel:
                 if time.time() - start_time > 20:
                     raise TimeoutError("Download timed out")
 
-            elapsed_time = time.time() - start_time
+            elapsed_time: float = time.time() - start_time
             return total_size / elapsed_time
         except TimeoutError as te:
             logger.warning(f"Timeout during TS download: {te}")
-            return 0.0
         except requests.exceptions.RequestException as e:
             logger.warning(f"Request error during TS download: {e}")
-            return 0.0
         except Exception as e:
             logger.warning(f"Unknown error during TS download: {e}")
-            return 0.0
+
+        return 0.0
 
     def __test_direct_bandwidth(self) -> float:
         """
@@ -220,10 +219,9 @@ class Channel:
             return total_size / elapsed_time
         except TimeoutError as te:
             logger.warning(f"Timeout during TS download: {te}")
-            return 0.0
         except requests.exceptions.RequestException as e:
             logger.warning(f"Request error during TS download: {e}")
-            return 0.0
         except Exception as e:
             logger.warning(f"Unknown error during TS download: {e}")
-            return 0.0
+
+        return 0.0

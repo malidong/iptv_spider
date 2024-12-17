@@ -9,6 +9,7 @@ import os
 import re
 import sys
 import requests
+from requests import Response
 
 from iptv_spider.channel import Channel
 from iptv_spider.logger import logger
@@ -42,7 +43,7 @@ class M3U8:
             regex_filter (str): Regex pattern to filter channel names.
         """
         if path.startswith("http"):
-            path = self.download_m3u8_file(url=path)
+            path: str = self.download_m3u8_file(url=path)
         self.regex_filter: str = regex_filter
         self.channels: dict[str, list[Channel]] = self.load_file(file_path=path)
         self.black_servers: list[str] = []
@@ -59,11 +60,11 @@ class M3U8:
             str: Local file path of the downloaded M3U8 file.
         """
         try:
-            response = requests.get(url, headers=HEADERS, timeout=10)
+            response: Response = requests.get(url, headers=HEADERS, timeout=10)
             response.raise_for_status()
-            cwd = os.getcwd()
+            cwd: str = os.getcwd()
             if not save_path:
-                save_path = f"{cwd}/{url.split('/')[-1]}"
+                save_path: str = f"{cwd}/{url.split('/')[-1]}"
             with open(save_path, 'w', encoding='utf-8') as f:
                 f.write(response.text)
             logger.info(f"M3U file saved to: {save_path}")
@@ -87,25 +88,25 @@ class M3U8:
             dict: A dictionary mapping channel names to lists of Channel objects.
         """
         if not regex_filter:
-            regex_filter = self.regex_filter
-        filtered_channels = {}
+            regex_filter: str = self.regex_filter
+        filtered_channels: dict = {}
 
         with open(file_path, 'r', encoding='utf-8') as f:
             while True:
-                line = f.readline()
+                line: str = f.readline()
                 if not line:
                     break
 
                 if line.startswith("#EXTINF"):
                     # Extract meta information and channel name
-                    meta = line.split(",")[0].strip()
-                    current_name = line.split(",")[-1].strip()
+                    meta: str = line.split(",")[0].strip()
+                    current_name: str = line.split(",")[-1].strip()
                     if not re.match(regex_filter, current_name):
                         continue
 
                     # Extract media URL
-                    media_url = f.readline().strip()
-                    channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
+                    media_url: str = f.readline().strip()
+                    channel: Channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
 
                     # Add the channel to the dictionary
                     if current_name not in filtered_channels:
@@ -130,13 +131,13 @@ class M3U8:
         for channel_name, channels in self.channels.items():
             for channel in channels:
                 # Skip blacklisted servers
-                server = channel.media_url.split('/')[2]
+                server: str = channel.media_url.split('/')[2]
                 if server in self.black_servers:
                     logger.info(f"Skipping blacklisted server: {server}")
                     continue
 
                 # Test channel speed
-                speed = channel.get_speed()
+                speed: float = channel.get_speed()
 
                 # Blacklist servers with zero speed
                 if speed == 0.0:

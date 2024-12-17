@@ -21,28 +21,28 @@ import logging
 import os
 
 # Log directory and file name
-LOG_DIR = "./logs"
-LOG_FILE = "application.log"
+LOG_DIR: str = "./logs"
+LOG_FILE: str = "application.log"
 
 # Ensure the log directory exists
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # Create a global Logger
-logger = logging.getLogger("iptv_spider")
+logger: logging.Logger = logging.getLogger("iptv_spider")
 logger.setLevel(logging.DEBUG)  # Set global log level
 
 # Create log format
-formatter = logging.Formatter(
+formatter: logging.Formatter = logging.Formatter(
     "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
 # Create file handler
-file_handler = logging.FileHandler(os.path.join(LOG_DIR, LOG_FILE), encoding="utf-8")
+file_handler: logging.FileHandler = logging.FileHandler(os.path.join(LOG_DIR, LOG_FILE), encoding="utf-8")
 file_handler.setLevel(logging.INFO)
 file_handler.setFormatter(formatter)
 
 # Create console handler
-console_handler = logging.StreamHandler()
+console_handler: logging.StreamHandler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
 
