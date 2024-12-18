@@ -33,7 +33,7 @@ name = "iptv-spider" # REQUIRED, is the only field that cannot be marked as dyna
 #
 # For a discussion on single-sourcing the version, see
 # https://packaging.python.org/guides/single-sourcing-package-version/
-version = "0.1.0" # REQUIRED, although can be dynamic
+version = "0.2.0" # REQUIRED, although can be dynamic
 
 # This is a one-line description or tagline of what your project does. This
 # corresponds to the "Summary" metadata field:
@@ -122,7 +122,7 @@ dependencies = ["m3u8==6.0.0", "requests==2.32.3"]
 # referred to as "extras". For a more extensive definition see:
 # https://packaging.python.org/en/latest/specifications/dependency-specifiers/#extras
 [project.optional-dependencies]
-dev = ["check-manifest"]
+dev = ["check-manifest", "pylint", "flake8"]
 test = ["coverage"]
 
 # List URLs that are relevant to your project
