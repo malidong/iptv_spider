@@ -108,6 +108,23 @@ def main(m3u_url: str, regex_filter: str, output_dir: str):
     logger.info(f"Filtered M3U playlist saved to: {m3u_filename}")
 
 
+def entrypoint():
+    """
+    Entry point for the IPTV Spider program.
+    """
+    # Parse command-line arguments
+    args = arg_parser()
+
+    # Run the main program with provided arguments
+    logger.info("Starting IPTV Spider...")
+    main(
+        m3u_url=args.url_or_path,
+        regex_filter=args.filter,
+        output_dir=args.output_dir
+    )
+    logger.info("IPTV Spider finished execution.")
+
+
 if __name__ == "__main__":
     # Parse command-line arguments
     args = arg_parser()
