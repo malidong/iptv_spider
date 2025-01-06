@@ -106,6 +106,11 @@ class M3U8:
 
                     # Extract media URL
                     media_url: str = f.readline().strip()
+
+                    if "udp" in media_url:
+                        logger.info(f"UDP contents will cause stuck of the process, now we cannot handle."
+                                    f"Skip this channel. {current_name}: {media_url}.")
+                        continue
                     channel: Channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
 
                     # Add the channel to the dictionary
