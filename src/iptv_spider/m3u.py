@@ -31,8 +31,9 @@ class M3U8:
         regex_filter (str): Regex pattern to filter channel names.
         channels (dict): A dictionary containing channel objects grouped by name.
         black_servers (list): A list of servers to avoid during speed tests due to poor performance.
+        tested_servers (dict): A dict to cache the speed of servers, and test speed of channels from the best servers.
     """
-    __slots__ = ("url", "regex_filter", "channels", "black_servers")
+    __slots__ = ("url", "regex_filter", "channels", "black_servers", "tested_servers")
 
     def __init__(self, path: str, regex_filter: str):
         """
@@ -47,6 +48,7 @@ class M3U8:
         self.regex_filter: str = regex_filter
         self.channels: dict[str, list[Channel]] = self.load_file(file_path=path)
         self.black_servers: list[str] = []
+        self.tested_servers: dict[str, float] = {}
 
     def download_m3u8_file(self, url: str, save_path: str = None) -> str:
         """
@@ -107,8 +109,8 @@ class M3U8:
                     # Extract media URL
                     media_url: str = f.readline().strip()
 
-                    if "udp" in media_url:
-                        logger.info(f"UDP contents will cause stuck of the process, now we cannot handle."
+                    if "udp" in media_url or "rtp" in media_url:
+                        logger.info(f"UDP or RTP contents will cause stuck of the process, now we cannot handle."
                                     f"Skip this channel. {current_name}: {media_url}.")
                         continue
                     channel: Channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
@@ -134,6 +136,12 @@ class M3U8:
         """
         best_channels: dict[str, Channel] = {}
         for channel_name, channels in self.channels.items():
+            # Sort channels by previously tested server speeds (if available)
+            channels.sort(
+                key=lambda ch: self.tested_servers.get(ch.media_url.split('/')[2], 0),
+                reverse=True
+            )
+
             for channel in channels:
                 # Skip blacklisted servers
                 server: str = channel.media_url.split('/')[2]
@@ -161,6 +169,10 @@ class M3U8:
                         f"skipping other channels with the same name."
                     )
                     break
+
+                # Update tested server speed
+                if server not in self.tested_servers or speed > self.tested_servers[server]:
+                    self.tested_servers[server] = speed
 
             # Remove channels with no valid speed
             if best_channels.get(channel_name, None) and best_channels[channel_name].speed == 0:
