@@ -110,7 +110,7 @@ http://example.com/cctv5plus.m3u8
 
 ## 🛡️ Compatibility
 
-- **Python Version**: Compatible with Python 3.8 and above.
+- **Python Version**: Compatible with Python 3.11 and above.
 - **Dependencies**:
   - `requests`: For HTTP requests.
   - `argparse`: For parsing command-line arguments.
