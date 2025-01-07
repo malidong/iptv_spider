@@ -77,7 +77,7 @@ class Channel:
             cpu_threads = os.cpu_count()
             self.speed = self.__test_m3u8_bandwidth(max_ts=ceil(cpu_threads / 2),
                                                     max_workers=floor(cpu_threads / 2))
-        logger.info(f"Channel speed test completed: {self.speed}")
+        logger.info(f"Channel speed test completed: {self.speed / 1024} KB/s.")
         return self.speed
 
     def get_video_resolution(self, ts_url: str) -> str:

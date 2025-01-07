@@ -8,11 +8,14 @@ This includes downloading M3U8 files, filtering channels by regex, and selecting
 import os
 import re
 import sys
+import json
 import requests
 from requests import Response
+from pathlib import Path
 
 from iptv_spider.channel import Channel
 from iptv_spider.logger import logger
+from iptv_spider.utils import get_config_dir
 
 # Simulating PotPlayer's User-Agent
 HEADERS = {
@@ -44,13 +47,40 @@ class M3U8:
             regex_filter (str): Regex pattern to filter channel names.
         """
         if path.startswith("http"):
-            path: str = self.download_m3u8_file(url=path)
+            path: str = self.download_m3u8_file(url=path,
+                                                save_path=get_config_dir() / path.split('/')[-1])
         self.regex_filter: str = regex_filter
         self.channels: dict[str, list[Channel]] = self.load_file(file_path=path)
         self.black_servers: list[str] = []
-        self.tested_servers: dict[str, float] = {}
+        self.tested_servers: dict[str, float] = self.__load_tested_servers()
 
-    def download_m3u8_file(self, url: str, save_path: str = None) -> str:
+    def __load_tested_servers(self, path: Path = None) -> dict:
+        """
+        Load previously tested server data from a JSON file.
+        :param path: The path to find "tested_servers.json" file.
+        :return:
+        """
+        tested_servers_path = path if path else get_config_dir()
+        tested_servers_file = tested_servers_path / "tested_servers.json"
+        if tested_servers_file.is_file():
+            with open(tested_servers_file, "r") as f:
+                return json.load(f)
+        else:
+            tested_servers_file.touch(mode=755, exist_ok=False)
+            return {}
+
+    def __save_tested_servers(self, path: Path = None):
+        """
+        Save tested server data from a JSON file to "tested_servers.json".
+        :param path: The folder path to save "tested_servers.json" file.
+        :return:
+        """
+        tested_servers_path = path if path else get_config_dir()
+        tested_servers_file = tested_servers_path / "tested_servers.json"
+        with open(tested_servers_file, "w", encoding="utf-8") as f:
+            json.dump(self.tested_servers, f, indent=4)
+
+    def download_m3u8_file(self, url: str, save_path: Path = None) -> str:
         """
         Download an M3U8 playlist file from the given URL.
 
@@ -110,7 +140,7 @@ class M3U8:
                     media_url: str = f.readline().strip()
 
                     if "udp" in media_url or "rtp" in media_url:
-                        logger.info(f"UDP or RTP contents will cause stuck of the process, now we cannot handle."
+                        logger.debug(f"UDP or RTP contents will cause stuck of the process, now we cannot handle."
                                     f"Skip this channel. {current_name}: {media_url}.")
                         continue
                     channel: Channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
@@ -146,7 +176,7 @@ class M3U8:
                 # Skip blacklisted servers
                 server: str = channel.media_url.split('/')[2]
                 if server in self.black_servers:
-                    logger.info(f"Skipping blacklisted server: {server}")
+                    logger.debug(f"Skipping blacklisted server: {server}")
                     continue
 
                 # Test channel speed

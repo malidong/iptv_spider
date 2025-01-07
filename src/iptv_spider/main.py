@@ -9,51 +9,13 @@ and outputs the best-performing channels to both a JSON file and an M3U file.
 """
 
 import os
-from argparse import Namespace
+
 from datetime import datetime
 import json
-import argparse
+
 from iptv_spider.m3u import M3U8
 from iptv_spider.logger import logger
-
-
-def arg_parser() -> Namespace:
-    """
-    Parse command-line arguments for the IPTV spider program.
-
-    Returns:
-        Namespace: Parsed arguments containing the M3U8 URL/path, filter regex, and output directory.
-    """
-    parser = argparse.ArgumentParser(
-        description="Process an M3U8 playlist by downloading or reading from a local file, "
-                    "filtering channel names, and selecting the best-performing URLs."
-    )
-
-    # Argument: M3U8 URL or local path
-    parser.add_argument(
-        "--url_or_path",
-        type=str,
-        default="https://live.iptv365.org/live.m3u",
-        help="URL or local path of the M3U8 playlist file. Defaults to 'https://live.iptv365.org/live.m3u'."
-    )
-
-    # Argument: Regular expression filter
-    parser.add_argument(
-        "--filter",
-        type=str,
-        default=r'\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b',
-        help="Regex pattern to filter channel names. Defaults to a pattern matching CCTV channels."
-    )
-
-    # Argument: Output directory
-    parser.add_argument(
-        "--output_dir",
-        type=str,
-        default=".",
-        help="Directory where the results (JSON and M3U files) will be saved. Defaults to the current directory."
-    )
-
-    return parser.parse_args()
+from iptv_spider.utils import arg_parser, load_config
 
 
 def main(m3u_url: str, regex_filter: str, output_dir: str):
@@ -114,13 +76,15 @@ def entrypoint():
     """
     # Parse command-line arguments
     args = arg_parser()
+    config = load_config()
+    config.update(args.__dict__)
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
     main(
-        m3u_url=args.url_or_path,
-        regex_filter=args.filter,
-        output_dir=args.output_dir
+        m3u_url=config.get("url_or_path"),
+        regex_filter=config.get("filter"),
+        output_dir=config.get("output_dir")
     )
     logger.info("IPTV Spider finished execution.")
 
@@ -128,6 +92,8 @@ def entrypoint():
 if __name__ == "__main__":
     # Parse command-line arguments
     args = arg_parser()
+    config = load_config()
+    config.update(args.__dict__)
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")

@@ -19,17 +19,20 @@ The logging setup supports two handlers:
 
 import logging
 import os
+from datetime import datetime
+from pathlib import Path
+from iptv_spider.utils import get_config_dir
 
 # Log directory and file name
-LOG_DIR: str = "./logs"
-LOG_FILE: str = "application.log"
+LOG_DIR: Path = get_config_dir() / "logs"
+LOG_FILE: str = f"{datetime.today().strftime('%Y-%m-%d')}.log"
 
 # Ensure the log directory exists
-os.makedirs(LOG_DIR, exist_ok=True)
+LOG_DIR.mkdir(exist_ok=True)
 
 # Create a global Logger
 logger: logging.Logger = logging.getLogger("iptv_spider")
-logger.setLevel(logging.DEBUG)  # Set global log level
+logger.setLevel(logging.INFO)  # Set global log level
 
 # Create log format
 formatter: logging.Formatter = logging.Formatter(
