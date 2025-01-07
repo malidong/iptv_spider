@@ -141,7 +141,7 @@ class M3U8:
 
                     if "udp" in media_url or "rtp" in media_url:
                         logger.debug(f"UDP or RTP contents will cause stuck of the process, now we cannot handle."
-                                    f"Skip this channel. {current_name}: {media_url}.")
+                                     f"Skip this channel. {current_name}: {media_url}.")
                         continue
                     channel: Channel = Channel(meta=meta, channel_name=current_name, media_url=media_url)
 
