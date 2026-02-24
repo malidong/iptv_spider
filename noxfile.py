@@ -1,22 +1,21 @@
 # -*- coding: utf-8 -*-
 # pylint: disable=line-too-long
 """
-# This file is *not* meant to cover or endorse the use of nox, pytest, or
-# testing in general,
-#
-# It's meant to show the use of:
-#
-# - check-manifest
-#     Confirms items checked into VCS are in your source distribution (sdist).
-# - readme_renderer (when using a reStructuredText README)
-#     Ensures your long_description will render correctly on PyPI.
-#
-# Also, it is intended to help confirm pull requests to this project.
+Nox automation for IPTV Spider testing and linting.
+
+Supported Python versions: 3.11, 3.12, 3.13, 3.14
+Nox version: 2024.x or later (compatible with Python 3.11+)
+
+Sessions:
+  - lint: Code style checking with flake8
+  - build_and_check_dists: Build and distribution checks
+  - tests: Run pytest for specified Python versions
 """
 import os
 
 import nox
 
+# Default sessions to run
 nox.options.sessions = ["lint"]
 
 
@@ -81,9 +80,20 @@ def tests(session):
     session.install("pytest")
     build_and_check_dists(session)
 
-    generated_files = os.listdir("dist/")
-    generated_sdist = os.path.join("dist/", generated_files[1])
-
+    # Find generated distribution file
+    dist_files = os.listdir("dist/")
+    if len(dist_files) < 2:
+        session.error("No distribution files generated. Build may have failed.")
+    
+    # Get the source distribution (.tar.gz)
+    generated_sdist = None
+    for f in dist_files:
+        if f.endswith(".tar.gz"):
+            generated_sdist = os.path.join("dist/", f)
+            break
+    
+    if not generated_sdist:
+        session.error("No .tar.gz distribution file found in dist/")
+    
     session.install(generated_sdist)
-
-    session.run("py.test", "tests/", *session.posargs)
+    session.run("pytest", "tests/", *session.posargs)
