@@ -8,6 +8,7 @@ This module defines a `Channel` class to represent and evaluate IPTV streams.
 Features include:
 - Download speed testing for direct and M3U8-based streams.
 - Resolution extraction from TS or media URLs.
+- Retry mechanism for failed network requests.
 
 Typical usage:
 #EXTINF:-1 tvg-name="CCTV2" tvg-logo="https://live.fanmingming.com/tv/CCTV2.png" group-title="🌐 Central Channels",CCTV2
@@ -20,6 +21,7 @@ import subprocess
 import time
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Optional
 import requests
 import m3u8
 
@@ -44,10 +46,12 @@ class Channel:
         is_direct (bool): Whether the URL is a direct stream (ends with .m3u or .m3u8).
         speed (float): Measured download speed of the stream in bytes per second.
         resolution (str): Video resolution of the stream (e.g., '1920x1080').
+        max_retries (int): Maximum number of retry attempts for network requests.
+        request_timeout (int): Timeout in seconds for HTTP requests.
     """
-    __slots__ = ("meta", "channel_name", "media_url", "is_direct", "speed", "resolution")
+    __slots__ = ("meta", "channel_name", "media_url", "is_direct", "speed", "resolution", "max_retries", "request_timeout")
 
-    def __init__(self, meta: str, channel_name: str, media_url: str):
+    def __init__(self, meta: str, channel_name: str, media_url: str, max_retries: int = 3, request_timeout: int = 30):
         """
         Initializes a Channel object.
 
@@ -55,6 +59,8 @@ class Channel:
             meta (str): Metadata for the channel (e.g., from the #EXTINF tag).
             channel_name (str): Name of the channel.
             media_url (str): Media stream URL.
+            max_retries (int): Maximum retry attempts for network requests.
+            request_timeout (int): Timeout in seconds for HTTP requests.
         """
         self.meta: str = meta
         self.channel_name: str = channel_name
@@ -62,6 +68,8 @@ class Channel:
         self.is_direct: bool = media_url.endswith("m3u") or media_url.endswith("m3u8")
         self.speed: float = -1
         self.resolution: str = "Unknown"
+        self.max_retries: int = max_retries
+        self.request_timeout: int = request_timeout
 
     def get_speed(self) -> float:
         """
@@ -74,10 +82,10 @@ class Channel:
         if self.is_direct:
             self.speed = self.__test_direct_bandwidth()
         else:
-            cpu_threads = os.cpu_count()
+            cpu_threads = os.cpu_count() or 4
             self.speed = self.__test_m3u8_bandwidth(max_ts=ceil(cpu_threads / 2),
                                                     max_workers=floor(cpu_threads / 2))
-        logger.info(f"Channel speed test completed: {self.speed / 1024} KB/s.")
+        logger.info(f"Channel speed test completed: {self.speed / 1024:.2f} KB/s.")
         return self.speed
 
     def get_video_resolution(self, ts_url: str) -> str:
@@ -106,7 +114,7 @@ class Channel:
                                                                  check=False)
             if result.returncode == 0:
                 resolution = result.stdout.strip()
-                return resolution if resolution else None
+                return resolution if resolution else "Unknown"
 
             return "Failed to get resolution"
         except subprocess.TimeoutExpired:
@@ -127,12 +135,14 @@ class Channel:
             float: Maximum download speed across tested TS segments.
         """
         try:
-            m3u8_content: str = requests.get(self.media_url, headers=HEADERS, timeout=10).text
+            response = requests.get(self.media_url, headers=HEADERS, timeout=self.request_timeout)
+            response.raise_for_status()
+            m3u8_content = response.text
             playlist = m3u8.loads(m3u8_content)
 
             ts_urls: list = [segment.uri for segment in playlist.segments]
             if not ts_urls:
-                return 0
+                return 0.0
 
             ts_urls: list = ts_urls[:max_ts]
 
@@ -144,19 +154,20 @@ class Channel:
                         results.append(future.result())
                     except Exception as e:
                         logger.warning(f"Error testing TS download speed: {e}")
-                        return 0.0
+                        continue
+            
             self.resolution = self.get_video_resolution(ts_url=ts_urls[0])
-            return max(results)
+            return max(results) if results else 0.0
         except requests.exceptions.RequestException as e:
-            logger.warning(f"RequestException during M3U8 speed test: {e}")
+            logger.warning(f"RequestException during M3U8 speed test for {self.channel_name}: {e}")
             return 0.0
         except Exception as e:
-            logger.warning(f"Error during M3U8 speed test: {e}")
+            logger.warning(f"Error during M3U8 speed test for {self.channel_name}: {e}")
             return 0.0
 
-    def __test_download_speed(self, ts_url: str, m3u8_base_url: str = None) -> float:
+    def __test_download_speed(self, ts_url: str, m3u8_base_url: Optional[str] = None) -> float:
         """
-        Tests the download speed of a single TS segment.
+        Tests the download speed of a single TS segment with retry mechanism.
 
         Args:
             ts_url (str): URL of the TS segment.
@@ -169,59 +180,89 @@ class Channel:
             m3u8_base_url: str = self.media_url
         if not ts_url.startswith('http'):
             ts_url: str = urljoin(m3u8_base_url, ts_url)
-        try:
-            logger.info(f"Testing download: {ts_url}")
-            start_time: float = time.time()
-            response: requests.Response = requests.get(ts_url, headers=HEADERS, stream=True, timeout=20)
-            response.raise_for_status()
+        
+        for attempt in range(self.max_retries):
+            try:
+                logger.info(f"Testing download (attempt {attempt + 1}/{self.max_retries}): {ts_url}")
+                start_time: float = time.time()
+                response: requests.Response = requests.get(
+                    ts_url, headers=HEADERS, stream=True, timeout=self.request_timeout
+                )
+                response.raise_for_status()
 
-            total_size = 0
-            for chunk in response.iter_content(chunk_size=8192):
-                total_size += len(chunk)
-                if total_size >= 5 * 1024 * 1024:
-                    break
-                if time.time() - start_time > 20:
-                    raise TimeoutError("Download timed out")
+                total_size = 0
+                try:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        total_size += len(chunk)
+                        if total_size >= 5 * 1024 * 1024:
+                            break
+                        if time.time() - start_time > self.request_timeout:
+                            raise TimeoutError(f"Download timed out after {self.request_timeout}s")
+                finally:
+                    response.close()
 
-            elapsed_time: float = time.time() - start_time
-            return total_size / elapsed_time
-        except TimeoutError as te:
-            logger.warning(f"Timeout during TS download: {te}")
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Request error during TS download: {e}")
-        except Exception as e:
-            logger.warning(f"Unknown error during TS download: {e}")
+                elapsed_time: float = time.time() - start_time
+                if elapsed_time > 0:
+                    speed = total_size / elapsed_time
+                    logger.info(f"Download speed: {speed / (1024 * 1024):.2f} MB/s")
+                    return speed
+                return 0.0
+            except TimeoutError as te:
+                logger.warning(f"Timeout during TS download (attempt {attempt + 1}): {te}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Request error during TS download (attempt {attempt + 1}): {e}")
+            except Exception as e:
+                logger.warning(f"Unknown error during TS download (attempt {attempt + 1}): {e}")
+            
+            # Wait before retrying
+            if attempt < self.max_retries - 1:
+                time.sleep(1)
 
         return 0.0
 
     def __test_direct_bandwidth(self) -> float:
         """
-        Tests the bandwidth of a direct media URL.
+        Tests the bandwidth of a direct media URL with retry mechanism.
 
         Returns:
             float: Download speed in bytes per second.
         """
-        try:
-            start_time = time.time()
-            response = requests.get(self.media_url, headers=HEADERS, stream=True, timeout=20)
-            response.raise_for_status()
+        for attempt in range(self.max_retries):
+            try:
+                logger.info(f"Testing direct bandwidth (attempt {attempt + 1}/{self.max_retries}): {self.media_url}")
+                start_time = time.time()
+                response = requests.get(
+                    self.media_url, headers=HEADERS, stream=True, timeout=self.request_timeout
+                )
+                response.raise_for_status()
 
-            total_size = 0
-            for chunk in response.iter_content(chunk_size=8192):
-                total_size += len(chunk)
-                if total_size >= 5 * 1024 * 1024:
-                    break
-                if time.time() - start_time > 20:
-                    raise TimeoutError("Download timed out")
+                total_size = 0
+                try:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        total_size += len(chunk)
+                        if total_size >= 5 * 1024 * 1024:
+                            break
+                        if time.time() - start_time > self.request_timeout:
+                            raise TimeoutError(f"Download timed out after {self.request_timeout}s")
+                finally:
+                    response.close()
 
-            elapsed_time = time.time() - start_time
-            self.resolution = self.get_video_resolution(ts_url=self.media_url)
-            return total_size / elapsed_time
-        except TimeoutError as te:
-            logger.warning(f"Timeout during TS download: {te}")
-        except requests.exceptions.RequestException as e:
-            logger.warning(f"Request error during TS download: {e}")
-        except Exception as e:
-            logger.warning(f"Unknown error during TS download: {e}")
+                elapsed_time = time.time() - start_time
+                self.resolution = self.get_video_resolution(ts_url=self.media_url)
+                if elapsed_time > 0:
+                    speed = total_size / elapsed_time
+                    logger.info(f"Download speed: {speed / (1024 * 1024):.2f} MB/s")
+                    return speed
+                return 0.0
+            except TimeoutError as te:
+                logger.warning(f"Timeout during direct bandwidth test (attempt {attempt + 1}): {te}")
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"Request error during direct bandwidth test (attempt {attempt + 1}): {e}")
+            except Exception as e:
+                logger.warning(f"Unknown error during direct bandwidth test (attempt {attempt + 1}): {e}")
+            
+            # Wait before retrying
+            if attempt < self.max_retries - 1:
+                time.sleep(1)
 
         return 0.0

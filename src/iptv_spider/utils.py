@@ -7,7 +7,11 @@ DEFAULT_CONFIG = {
     "m3u8_url": "https://live.iptv365.org/live.m3u",
     "regex_filter": r'\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b',
     "output_dir": str(Path.home() / "iptv_spider_output"),
-    "log_level": "INFO"
+    "log_level": "INFO",
+    "speed_threshold_mb": 0.3,  # Minimum speed threshold in MB/s for output
+    "speed_limit_mb": 2,  # Speed limit in MB/s for early termination
+    "max_retries": 3,  # Maximum retry attempts for network requests
+    "request_timeout": 30  # Timeout in seconds for HTTP requests
 }
 
 
@@ -45,6 +49,38 @@ def arg_parser() -> Namespace:
         type=str,
         default=".",
         help="Directory where the results (JSON and M3U files) will be saved. Defaults to the current directory."
+    )
+
+    # Argument: Speed threshold in MB/s
+    parser.add_argument(
+        "--speed_threshold_mb",
+        type=float,
+        default=0.3,
+        help="Minimum speed threshold in MB/s for channels to be included in output. Defaults to 0.3 MB/s."
+    )
+
+    # Argument: Speed limit in MB/s for early termination
+    parser.add_argument(
+        "--speed_limit_mb",
+        type=float,
+        default=2,
+        help="Speed limit in MB/s. Testing stops when this speed is reached. Defaults to 2 MB/s."
+    )
+
+    # Argument: Maximum retry attempts
+    parser.add_argument(
+        "--max_retries",
+        type=int,
+        default=3,
+        help="Maximum number of retry attempts for failed network requests. Defaults to 3."
+    )
+
+    # Argument: Request timeout
+    parser.add_argument(
+        "--request_timeout",
+        type=int,
+        default=30,
+        help="Timeout in seconds for HTTP requests. Defaults to 30 seconds."
     )
 
     return parser.parse_args()

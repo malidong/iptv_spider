@@ -68,10 +68,10 @@ def build_and_check_dists(session):
     session.run("python", "-m", "twine", "check", "dist/*")
 
 
-@nox.session(python=["3.11", "3.12", "3.13"])
+@nox.session(python=["3.11", "3.12", "3.13", "3.14"])
 def tests(session):
     """
-    Run tests for Python versions 3.11, 3.12, and 3.13.
+    Run tests for Python versions 3.11, 3.12, 3.13, and 3.14.
 
     This session installs pytest, builds and checks the distributions,
     and runs the tests for the specified Python versions. It checks that the

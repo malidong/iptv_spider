@@ -9,7 +9,6 @@ and outputs the best-performing channels to both a JSON file and an M3U file.
 """
 
 import os
-
 from datetime import datetime
 import json
 
@@ -18,7 +17,15 @@ from iptv_spider.logger import logger
 from iptv_spider.utils import arg_parser, load_config
 
 
-def main(m3u_url: str, regex_filter: str, output_dir: str):
+def main(
+    m3u_url: str,
+    regex_filter: str,
+    output_dir: str,
+    speed_threshold_mb: float = 0.3,
+    speed_limit_mb: float = 2,
+    max_retries: int = 3,
+    request_timeout: int = 30
+) -> dict:
     """
     Main function to process an IPTV playlist.
 
@@ -32,6 +39,13 @@ def main(m3u_url: str, regex_filter: str, output_dir: str):
         m3u_url (str): URL or local path of the M3U8 file.
         regex_filter (str): Regular expression to filter channel names.
         output_dir (str): Directory to save the output files.
+        speed_threshold_mb (float): Minimum speed threshold in MB/s for output.
+        speed_limit_mb (float): Speed limit in MB/s for early termination.
+        max_retries (int): Maximum retry attempts for network requests.
+        request_timeout (int): Timeout in seconds for HTTP requests.
+
+    Returns:
+        dict: Statistics about the test results.
     """
     # Ensure the output directory exists
     if not os.path.exists(output_dir):
@@ -40,37 +54,60 @@ def main(m3u_url: str, regex_filter: str, output_dir: str):
 
     # Create an M3U8 object and load channels
     logger.info(f"Processing M3U8 playlist from: {m3u_url}")
-    m3u8: M3U8 = M3U8(path=m3u_url, regex_filter=regex_filter)
-    best_channels_dict: dict = m3u8.get_best_channels()
+    m3u8 = M3U8(
+        path=m3u_url,
+        regex_filter=regex_filter,
+        max_retries=max_retries,
+        request_timeout=request_timeout
+    )
+    
+    logger.info(f"Total channels filtered: {len(m3u8.channels)}")
+    best_channels_dict = m3u8.get_best_channels(speed_limit=int(speed_limit_mb))
 
     # Prepare results for saving
-    best_channels: dict = {}
+    best_channels = {}
+    speed_threshold_bytes = speed_threshold_mb * 1024 * 1024
+    valid_channels = 0
+    
     for channel_name, channel in best_channels_dict.items():
-        best_channels[channel_name] = {
-            "name": channel.channel_name,
-            "meta": channel.meta,
-            "media_url": channel.media_url,
-            "speed": channel.speed,
-            "resolution": channel.resolution
-        }
+        if channel.speed > speed_threshold_bytes:
+            valid_channels += 1
+            best_channels[channel_name] = {
+                "name": channel.channel_name,
+                "meta": channel.meta,
+                "media_url": channel.media_url,
+                "speed": channel.speed,
+                "speed_mbps": round(channel.speed / (1024 * 1024), 2),
+                "resolution": channel.resolution
+            }
 
     # Save filtered channels to a JSON file
-    json_filename: str = os.path.join(output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json")
+    json_filename = os.path.join(output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json")
     with open(json_filename, 'w', encoding='utf-8') as json_file:
-        json.dump(best_channels, json_file, indent=4)
+        json.dump(best_channels, json_file, indent=4, ensure_ascii=False)
     logger.info(f"Filtered channel details saved to: {json_filename}")
 
     # Save results to an M3U file
-    m3u_filename: str = os.path.join(output_dir, 'best_channels.m3u')
+    m3u_filename = os.path.join(output_dir, 'best_channels.m3u')
     with open(m3u_filename, 'w', encoding='utf-8') as m3u_file:
         for channel_name, channel_info in best_channels.items():
-            if channel_info["speed"] > 0.3 * 1024 * 1024:  # Minimum speed threshold: 0.3 MB/s
-                m3u_file.write(f"{channel_info['meta']},{channel_info['name']}\n")
-                m3u_file.write(f"{channel_info['media_url']}\n")
+            m3u_file.write(f"{channel_info['meta']},{channel_info['name']}\n")
+            m3u_file.write(f"{channel_info['media_url']}\n")
     logger.info(f"Filtered M3U playlist saved to: {m3u_filename}")
 
+    # Calculate and return statistics
+    stats = {
+        "total_channels_filtered": len(m3u8.channels),
+        "best_channels_tested": len(best_channels_dict),
+        "valid_channels_output": valid_channels,
+        "speed_threshold_mb": speed_threshold_mb,
+        "output_files": [json_filename, m3u_filename]
+    }
+    
+    return stats
 
-def entrypoint():
+
+def entrypoint() -> None:
     """
     Entry point for the IPTV Spider program.
     """
@@ -81,11 +118,25 @@ def entrypoint():
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
-    main(
+    stats = main(
         m3u_url=config.get("url_or_path"),
         regex_filter=config.get("filter"),
-        output_dir=config.get("output_dir")
+        output_dir=config.get("output_dir"),
+        speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
+        speed_limit_mb=config.get("speed_limit_mb", 2),
+        max_retries=config.get("max_retries", 3),
+        request_timeout=config.get("request_timeout", 30)
     )
+    
+    # Log statistics
+    logger.info("=" * 50)
+    logger.info("IPTV Spider Test Summary:")
+    logger.info(f"Total channels filtered: {stats['total_channels_filtered']}")
+    logger.info(f"Best channels tested: {stats['best_channels_tested']}")
+    logger.info(f"Valid channels output: {stats['valid_channels_output']}")
+    logger.info(f"Speed threshold: {stats['speed_threshold_mb']} MB/s")
+    logger.info(f"Output files: {', '.join(stats['output_files'])}")
+    logger.info("=" * 50)
     logger.info("IPTV Spider finished execution.")
 
 
@@ -97,9 +148,23 @@ if __name__ == "__main__":
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
-    main(
-        m3u_url=args.url_or_path,
-        regex_filter=args.filter,
-        output_dir=args.output_dir
+    stats = main(
+        m3u_url=config.get("url_or_path"),
+        regex_filter=config.get("filter"),
+        output_dir=config.get("output_dir"),
+        speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
+        speed_limit_mb=config.get("speed_limit_mb", 2),
+        max_retries=config.get("max_retries", 3),
+        request_timeout=config.get("request_timeout", 30)
     )
+    
+    # Log statistics
+    logger.info("=" * 50)
+    logger.info("IPTV Spider Test Summary:")
+    logger.info(f"Total channels filtered: {stats['total_channels_filtered']}")
+    logger.info(f"Best channels tested: {stats['best_channels_tested']}")
+    logger.info(f"Valid channels output: {stats['valid_channels_output']}")
+    logger.info(f"Speed threshold: {stats['speed_threshold_mb']} MB/s")
+    logger.info(f"Output files: {', '.join(stats['output_files'])}")
+    logger.info("=" * 50)
     logger.info("IPTV Spider finished execution.")
