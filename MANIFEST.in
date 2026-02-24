@@ -1,0 +1,13 @@
+include README.md
+include README.en-US.md
+include README.zh-CN.md
+include LICENSE.txt
+include requirements.txt
+include noxfile.py
+include setup.ps1
+include setup.bat
+include setup.sh
+include uv.lock
+recursive-include .github/workflows *.yml
+recursive-include src *.py
+recursive-include tests *.py
