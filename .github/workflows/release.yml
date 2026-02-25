@@ -17,7 +17,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ssh-key: ${{ secrets.IPTV_SPIDER_SECRET }}
+          # Use the provided GITHUB_TOKEN for HTTPS checkout in the runner
+          # to avoid SSH publickey permission errors on GitHub-hosted runners.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Ensure tags and full history are available when the workflow needs to fetch tags
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
