@@ -5,20 +5,29 @@ name: Release
 
 on:
   release:
-    branches:
-      - main
+    # Trigger when a release is published on GitHub
+    types: [published]
 
 jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     permissions:
-      # IMPORTANT: this permission is mandatory for trusted publishing
+      # Grant read access to repository contents for private repos
+      contents: read
+      # IMPORTANT: this permission is mandatory for trusted publishing (OIDC)
       id-token: write
     steps:
-      - name: Checkout
+      - name: Checkout (SSH)
         uses: actions/checkout@v4
         with:
+          # Use the SSH private key stored in the repo secret
           ssh-key: ${{ secrets.IPTV_SPIDER_SECRET }}
+          # Restrict known hosts to GitHub to avoid interactive prompts
+          ssh-known-hosts: github.com
+          # Fetch full history and tags so releases and tags are available
+          fetch-depth: 0
+          # Do not persist HTTPS credentials because we're using SSH
+          persist-credentials: false
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
