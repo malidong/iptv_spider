@@ -119,9 +119,9 @@ def entrypoint() -> None:
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
     stats = main(
-        m3u_url=config.get("url_or_path"),
-        regex_filter=config.get("filter"),
-        output_dir=config.get("output_dir"),
+        m3u_url=str(config.get("url_or_path", "https://live.iptv365.org/live.m3u")),
+        regex_filter=str(config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")),
+        output_dir=str(config.get("output_dir", ".")),
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
         max_retries=config.get("max_retries", 3),
@@ -149,9 +149,9 @@ if __name__ == "__main__":
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
     stats = main(
-        m3u_url=config.get("url_or_path"),
-        regex_filter=config.get("filter"),
-        output_dir=config.get("output_dir"),
+        m3u_url=str(config.get("url_or_path", "https://live.iptv365.org/live.m3u")),
+        regex_filter=str(config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")),
+        output_dir=str(config.get("output_dir", ".")),
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
         max_retries=config.get("max_retries", 3),
