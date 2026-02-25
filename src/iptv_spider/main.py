@@ -60,7 +60,7 @@ def main(
         max_retries=max_retries,
         request_timeout=request_timeout
     )
-    
+
     logger.info(f"Total channels filtered: {len(m3u8.channels)}")
     best_channels_dict = m3u8.get_best_channels(speed_limit=int(speed_limit_mb))
 
@@ -68,7 +68,7 @@ def main(
     best_channels = {}
     speed_threshold_bytes = speed_threshold_mb * 1024 * 1024
     valid_channels = 0
-    
+
     for channel_name, channel in best_channels_dict.items():
         if channel.speed > speed_threshold_bytes:
             valid_channels += 1
@@ -103,7 +103,7 @@ def main(
         "speed_threshold_mb": speed_threshold_mb,
         "output_files": [json_filename, m3u_filename]
     }
-    
+
     return stats
 
 
@@ -127,7 +127,7 @@ def entrypoint() -> None:
         max_retries=config.get("max_retries", 3),
         request_timeout=config.get("request_timeout", 30)
     )
-    
+
     # Log statistics
     logger.info("=" * 50)
     logger.info("IPTV Spider Test Summary:")
@@ -157,7 +157,7 @@ if __name__ == "__main__":
         max_retries=config.get("max_retries", 3),
         request_timeout=config.get("request_timeout", 30)
     )
-    
+
     # Log statistics
     logger.info("=" * 50)
     logger.info("IPTV Spider Test Summary:")

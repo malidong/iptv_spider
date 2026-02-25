@@ -13,7 +13,7 @@ import time
 import requests
 from requests import Response
 from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, Dict, List
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from iptv_spider.channel import Channel
@@ -23,8 +23,8 @@ from iptv_spider.utils import get_config_dir
 # Simulating PotPlayer's User-Agent
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                  "AppleWebKit/537.36 (KHTML, like Gecko) "
-                  "Chrome/90.0.4430.212 Safari/537.36"
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/90.0.4430.212 Safari/537.36"
 }
 
 
@@ -41,9 +41,24 @@ class M3U8:
         max_retries (int): Maximum retry attempts for network requests.
         request_timeout (int): Timeout in seconds for HTTP requests.
     """
-    __slots__ = ("url", "regex_filter", "channels", "black_servers", "tested_servers", "max_retries", "request_timeout")
 
-    def __init__(self, path: str, regex_filter: str, max_retries: int = 3, request_timeout: int = 30):
+    __slots__ = (
+        "url",
+        "regex_filter",
+        "channels",
+        "black_servers",
+        "tested_servers",
+        "max_retries",
+        "request_timeout",
+    )
+
+    def __init__(
+        self,
+        path: str,
+        regex_filter: str,
+        max_retries: int = 3,
+        request_timeout: int = 30,
+    ):
         """
         Initialize an M3U8 object by loading channels from a file or URL.
 
@@ -55,10 +70,11 @@ class M3U8:
         """
         self.max_retries: int = max_retries
         self.request_timeout: int = request_timeout
-        
+
         if path.startswith("http"):
-            path: str = self.download_m3u8_file(url=path,
-                                                save_path=get_config_dir() / path.split('/')[-1])
+            path: str = self.download_m3u8_file(
+                url=path, save_path=get_config_dir() / path.split("/")[-1]
+            )
         self.regex_filter: str = regex_filter
         self.channels: dict[str, list[Channel]] = self.load_file(file_path=path)
         self.black_servers: list[str] = self.__load_black_servers()
@@ -67,10 +83,10 @@ class M3U8:
     def __load_black_servers(self, path: Optional[Path] = None) -> List[str]:
         """
         Load previously blacklisted server data from a JSON file.
-        
+
         Args:
             path (Path): The path to find "black_servers.json" file.
-            
+
         Returns:
             list: List of blacklisted server addresses.
         """
@@ -87,7 +103,7 @@ class M3U8:
     def __save_black_servers(self, path: Optional[Path] = None) -> None:
         """
         Save blacklisted server data to "black_servers.json".
-        
+
         Args:
             path (Path): The folder path to save "black_servers.json" file.
         """
@@ -103,10 +119,10 @@ class M3U8:
     def __load_tested_servers(self, path: Optional[Path] = None) -> Dict[str, float]:
         """
         Load previously tested server data from a JSON file.
-        
+
         Args:
             path (Path): The path to find "tested_servers.json" file.
-            
+
         Returns:
             dict: Dictionary mapping server addresses to their tested speeds.
         """
@@ -123,7 +139,7 @@ class M3U8:
     def __save_tested_servers(self, path: Optional[Path] = None) -> None:
         """
         Save tested server data to "tested_servers.json".
-        
+
         Args:
             path (Path): The folder path to save "tested_servers.json" file.
         """
@@ -132,7 +148,9 @@ class M3U8:
         try:
             with open(tested_servers_file, "w", encoding="utf-8") as f:
                 json.dump(self.tested_servers, f, indent=4)
-            logger.debug(f"Tested servers cache saved: {len(self.tested_servers)} servers")
+            logger.debug(
+                f"Tested servers cache saved: {len(self.tested_servers)} servers"
+            )
         except Exception as e:
             logger.warning(f"Failed to save tested servers cache: {e}")
 
@@ -149,33 +167,43 @@ class M3U8:
         """
         for attempt in range(self.max_retries):
             try:
-                logger.info(f"Downloading M3U8 file (attempt {attempt + 1}/{self.max_retries}): {url}")
-                response: Response = requests.get(url, headers=HEADERS, timeout=self.request_timeout)
+                logger.info(
+                    f"Downloading M3U8 file (attempt {attempt + 1}/{self.max_retries}): {url}"
+                )
+                response: Response = requests.get(
+                    url, headers=HEADERS, timeout=self.request_timeout
+                )
                 response.raise_for_status()
-                
+
                 cwd: str = os.getcwd()
                 if not save_path:
                     save_path: str = f"{cwd}/{url.split('/')[-1]}"
-                    
-                with open(save_path, 'w', encoding='utf-8') as f:
+
+                with open(save_path, "w", encoding="utf-8") as f:
                     f.write(response.text)
                 logger.info(f"M3U file saved to: {save_path}")
                 return str(save_path)
             except requests.exceptions.RequestException as e:
-                logger.warning(f"Error downloading M3U file (attempt {attempt + 1}): {str(e)}")
+                logger.warning(
+                    f"Error downloading M3U file (attempt {attempt + 1}): {str(e)}"
+                )
                 if attempt < self.max_retries - 1:
-                    import time
                     time.sleep(1)
             except Exception as e:
-                logger.warning(f"Exception while downloading M3U file (attempt {attempt + 1}): {str(e)}")
+                logger.warning(
+                    f"Exception while downloading M3U file (attempt {attempt + 1}): {str(e)}"
+                )
                 if attempt < self.max_retries - 1:
-                    import time
                     time.sleep(1)
-        
-        logger.error(f"Failed to download M3U file after {self.max_retries} attempts: {url}")
+
+        logger.error(
+            f"Failed to download M3U file after {self.max_retries} attempts: {url}"
+        )
         sys.exit(-1)
 
-    def load_file(self, file_path: str, regex_filter: Optional[str] = None) -> Dict[str, List[Channel]]:
+    def load_file(
+        self, file_path: str, regex_filter: Optional[str] = None
+    ) -> Dict[str, List[Channel]]:
         """
         Load and parse an M3U8 playlist file into channels.
 
@@ -191,7 +219,7 @@ class M3U8:
         filtered_channels: dict = {}
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, "r", encoding="utf-8") as f:
                 while True:
                     line: str = f.readline()
                     if not line:
@@ -208,16 +236,18 @@ class M3U8:
                         media_url: str = f.readline().strip()
 
                         if "udp" in media_url or "rtp" in media_url:
-                            logger.debug(f"UDP or RTP contents will cause stuck of the process. "
-                                       f"Skip this channel. {current_name}: {media_url}.")
+                            logger.debug(
+                                f"UDP or RTP contents will cause stuck of the process. "
+                                f"Skip this channel. {current_name}: {media_url}."
+                            )
                             continue
-                        
+
                         channel: Channel = Channel(
                             meta=meta,
                             channel_name=current_name,
                             media_url=media_url,
                             max_retries=self.max_retries,
-                            request_timeout=self.request_timeout
+                            request_timeout=self.request_timeout,
                         )
 
                         # Add the channel to the dictionary
@@ -226,7 +256,9 @@ class M3U8:
                         else:
                             filtered_channels[current_name].append(channel)
 
-            logger.info(f"Matched {len(filtered_channels)} channels: {list(filtered_channels.keys())}")
+            logger.info(
+                f"Matched {len(filtered_channels)} channels: {list(filtered_channels.keys())}"
+            )
             return filtered_channels
         except FileNotFoundError:
             logger.error(f"M3U file not found: {file_path}")
@@ -235,15 +267,17 @@ class M3U8:
             logger.error(f"Error loading M3U file: {str(e)}")
             sys.exit(-1)
 
-    def __test_channel_speed(self, channel_name: str, channel: Channel, speed_limit_mb: int) -> tuple:
+    def __test_channel_speed(
+        self, channel_name: str, channel: Channel, speed_limit_mb: int
+    ) -> tuple:
         """
         Test a single channel's speed and return results.
-        
+
         Args:
             channel_name (str): Name of the channel.
             channel (Channel): Channel object to test.
             speed_limit_mb (int): Speed limit in MB/s for early termination.
-            
+
         Returns:
             tuple: (channel_name, channel, exceeds_limit) indicating if limit was exceeded.
         """
@@ -273,33 +307,40 @@ class M3U8:
         for channel_name, channels in self.channels.items():
             # Sort channels by previously tested server speeds (if available)
             channels.sort(
-                key=lambda ch: self.tested_servers.get(ch.media_url.split('/')[2], 0),
-                reverse=True
+                key=lambda ch: self.tested_servers.get(ch.media_url.split("/")[2], 0),
+                reverse=True,
             )
 
             for channel in channels:
                 # Skip blacklisted servers
-                server: str = channel.media_url.split('/')[2]
+                server: str = channel.media_url.split("/")[2]
                 if server in self.black_servers:
-                    logger.debug(f"Skipping blacklisted server: {server} for channel {channel_name}")
+                    logger.debug(
+                        f"Skipping blacklisted server: {server} for channel {channel_name}"
+                    )
                     continue
-                
+
                 channels_to_test.append((channel_name, channel))
 
         # Test channels in parallel
-        logger.info(f"Starting parallel speed tests for {len(channels_to_test)} channels with {max_workers} workers...")
-        
+        logger.info(
+            f"Starting parallel speed tests for {len(channels_to_test)} channels with {max_workers} workers..."
+        )
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {
-                executor.submit(self.__test_channel_speed, ch_name, ch, speed_limit): (ch_name, ch)
+                executor.submit(self.__test_channel_speed, ch_name, ch, speed_limit): (
+                    ch_name,
+                    ch,
+                )
                 for ch_name, ch in channels_to_test
             }
-            
+
             for future in as_completed(futures):
                 channel_name, channel = futures[future]
                 try:
                     result_ch_name, result_channel, exceeds_limit = future.result()
-                    server: str = result_channel.media_url.split('/')[2]
+                    server: str = result_channel.media_url.split("/")[2]
                     speed: float = result_channel.speed
 
                     # Blacklist servers with zero speed
@@ -313,23 +354,30 @@ class M3U8:
                         best_channels[result_ch_name] = result_channel
                     elif speed > best_channels[result_ch_name].speed:
                         best_channels[result_ch_name] = result_channel
-                    
+
                     # Update tested server speed
                     if server not in self.tested_servers or speed > self.tested_servers[server]:
                         self.tested_servers[server] = speed
 
                 except Exception as e:
-                    logger.error(f"Error processing test result for {channel_name}: {e}")
+                    logger.error(
+                        f"Error processing test result for {channel_name}: {e}"
+                    )
 
         # Remove channels with no valid speed
-        invalid_channels = [ch_name for ch_name in best_channels 
-                           if best_channels[ch_name].speed == 0 or best_channels[ch_name].speed < 0]
+        invalid_channels = [
+            ch_name
+            for ch_name in best_channels
+            if best_channels[ch_name].speed == 0 or best_channels[ch_name].speed < 0
+        ]
         for ch_name in invalid_channels:
             best_channels.pop(ch_name, None)
 
         # Save updated caches
         self.__save_black_servers()
         self.__save_tested_servers()
-        
-        logger.info(f"Testing completed. Best channels: {len(best_channels)}, Blacklisted servers: {len(self.black_servers)}")
+
+        logger.info(
+            f"Testing completed. Best channels: {len(best_channels)}, Blacklisted servers: {len(self.black_servers)}"
+        )
         return best_channels

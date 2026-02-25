@@ -155,7 +155,7 @@ class Channel:
                     except Exception as e:
                         logger.warning(f"Error testing TS download speed: {e}")
                         continue
-            
+
             self.resolution = self.get_video_resolution(ts_url=ts_urls[0])
             return max(results) if results else 0.0
         except requests.exceptions.RequestException as e:
@@ -180,7 +180,7 @@ class Channel:
             m3u8_base_url: str = self.media_url
         if not ts_url.startswith('http'):
             ts_url: str = urljoin(m3u8_base_url, ts_url)
-        
+
         for attempt in range(self.max_retries):
             try:
                 logger.info(f"Testing download (attempt {attempt + 1}/{self.max_retries}): {ts_url}")
@@ -213,7 +213,7 @@ class Channel:
                 logger.warning(f"Request error during TS download (attempt {attempt + 1}): {e}")
             except Exception as e:
                 logger.warning(f"Unknown error during TS download (attempt {attempt + 1}): {e}")
-            
+
             # Wait before retrying
             if attempt < self.max_retries - 1:
                 time.sleep(1)
@@ -260,7 +260,7 @@ class Channel:
                 logger.warning(f"Request error during direct bandwidth test (attempt {attempt + 1}): {e}")
             except Exception as e:
                 logger.warning(f"Unknown error during direct bandwidth test (attempt {attempt + 1}): {e}")
-            
+
             # Wait before retrying
             if attempt < self.max_retries - 1:
                 time.sleep(1)

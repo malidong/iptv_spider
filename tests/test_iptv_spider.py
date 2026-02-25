@@ -4,6 +4,7 @@ Unit tests for the IPTV Spider project.
 
 Tests cover M3U8 file parsing, Channel speed testing, and utility functions.
 """
+
 import unittest
 import tempfile
 import json
@@ -12,7 +13,7 @@ from unittest.mock import patch, MagicMock
 
 from src.iptv_spider.m3u import M3U8
 from src.iptv_spider.channel import Channel
-from src.iptv_spider.utils import arg_parser, load_config, save_config, get_config_dir
+from src.iptv_spider.utils import arg_parser, get_config_dir
 from src.iptv_spider.main import main
 
 
@@ -26,7 +27,7 @@ class TestChannel(unittest.TestCase):
             channel_name="Test Channel",
             media_url="http://example.com/stream.m3u8",
             max_retries=1,
-            request_timeout=10
+            request_timeout=10,
         )
 
     def test_channel_initialization(self):
@@ -42,7 +43,7 @@ class TestChannel(unittest.TestCase):
         direct_channel = Channel(
             meta="#EXTINF:-1",
             channel_name="Direct Stream",
-            media_url="http://example.com/stream.ts"
+            media_url="http://example.com/stream.ts",
         )
         self.assertFalse(direct_channel.is_direct)
 
@@ -53,7 +54,7 @@ class TestChannel(unittest.TestCase):
             channel_name="Retry Test",
             media_url="http://example.com/stream.m3u8",
             max_retries=5,
-            request_timeout=20
+            request_timeout=20,
         )
         self.assertEqual(channel_with_retries.max_retries, 5)
         self.assertEqual(channel_with_retries.request_timeout, 20)
@@ -73,13 +74,16 @@ http://example.com/cctv2.m3u8
 udp://example.com/hbo
 """
         # Create a temporary M3U file
-        self.temp_m3u = tempfile.NamedTemporaryFile(mode='w', suffix='.m3u', delete=False, encoding='utf-8')
+        self.temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
         self.temp_m3u.write(self.test_m3u_content)
         self.temp_m3u.close()
 
     def tearDown(self):
         """Clean up test fixtures."""
         import os
+
         if os.path.exists(self.temp_m3u.name):
             os.unlink(self.temp_m3u.name)
 
@@ -89,7 +93,7 @@ udp://example.com/hbo
             path=self.temp_m3u.name,
             regex_filter=r"CCTV.*",
             max_retries=3,
-            request_timeout=30
+            request_timeout=30,
         )
         self.assertEqual(len(m3u8.channels), 2)  # CCTV-1 and CCTV-2, HBO filtered out
         self.assertIn("CCTV-1", m3u8.channels)
@@ -101,7 +105,7 @@ udp://example.com/hbo
             path=self.temp_m3u.name,
             regex_filter=r".*",
             max_retries=3,
-            request_timeout=30
+            request_timeout=30,
         )
         # UDP stream should not be loaded
         for channels in m3u8.channels.values():
@@ -114,7 +118,7 @@ udp://example.com/hbo
             path=self.temp_m3u.name,
             regex_filter=r"CCTV.*",
             max_retries=3,
-            request_timeout=30
+            request_timeout=30,
         )
         self.assertIsInstance(m3u8.black_servers, list)
         self.assertEqual(len(m3u8.black_servers), 0)
@@ -125,7 +129,7 @@ udp://example.com/hbo
             path=self.temp_m3u.name,
             regex_filter=r"CCTV.*",
             max_retries=3,
-            request_timeout=30
+            request_timeout=30,
         )
         self.assertIsInstance(m3u8.tested_servers, dict)
 
@@ -135,7 +139,7 @@ class TestUtilsFunctions(unittest.TestCase):
 
     def test_arg_parser(self):
         """Test command-line argument parsing."""
-        with patch('sys.argv', ['prog']):
+        with patch("sys.argv", ["prog"]):
             args = arg_parser()
             self.assertIsNotNone(args.url_or_path)
             self.assertIsNotNone(args.filter)
@@ -157,18 +161,18 @@ class TestUtilsFunctions(unittest.TestCase):
             test_config = {
                 "test_key": "test_value",
                 "speed_threshold_mb": 0.5,
-                "max_retries": 5
+                "max_retries": 5,
             }
             config_file = Path(tmpdir) / "test_config.json"
-            
+
             # Manually save config
-            with open(config_file, 'w', encoding='utf-8') as f:
+            with open(config_file, "w", encoding="utf-8") as f:
                 json.dump(test_config, f)
-            
+
             # Load and verify
-            with open(config_file, 'r', encoding='utf-8') as f:
+            with open(config_file, "r", encoding="utf-8") as f:
                 loaded = json.load(f)
-            
+
             self.assertEqual(loaded["test_key"], "test_value")
             self.assertEqual(loaded["speed_threshold_mb"], 0.5)
             self.assertEqual(loaded["max_retries"], 5)
@@ -185,22 +189,25 @@ http://example.com/cctv1.m3u8
 #EXTINF:-1 tvg-name="CCTV2",CCTV-2
 http://example.com/cctv2.m3u8
 """
-        self.temp_m3u = tempfile.NamedTemporaryFile(mode='w', suffix='.m3u', delete=False, encoding='utf-8')
+        self.temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
         self.temp_m3u.write(self.test_m3u_content)
         self.temp_m3u.close()
-        
+
         self.temp_output_dir = tempfile.mkdtemp()
 
     def tearDown(self):
         """Clean up test fixtures."""
         import os
         import shutil
+
         if os.path.exists(self.temp_m3u.name):
             os.unlink(self.temp_m3u.name)
         if os.path.exists(self.temp_output_dir):
             shutil.rmtree(self.temp_output_dir)
 
-    @patch('src.iptv_spider.main.M3U8')
+    @patch("src.iptv_spider.main.M3U8")
     def test_main_returns_statistics(self, mock_m3u8):
         """Test that main function returns statistics."""
         # Mock the M3U8 class
@@ -208,7 +215,7 @@ http://example.com/cctv2.m3u8
         mock_instance.channels = {"CCTV-1": [], "CCTV-2": []}
         mock_instance.get_best_channels.return_value = {}
         mock_m3u8.return_value = mock_instance
-        
+
         stats = main(
             m3u_url=self.temp_m3u.name,
             regex_filter=r"CCTV.*",
@@ -216,9 +223,9 @@ http://example.com/cctv2.m3u8
             speed_threshold_mb=0.3,
             speed_limit_mb=2,
             max_retries=3,
-            request_timeout=30
+            request_timeout=30,
         )
-        
+
         self.assertIsInstance(stats, dict)
         self.assertIn("total_channels_filtered", stats)
         self.assertIn("best_channels_tested", stats)
@@ -227,5 +234,5 @@ http://example.com/cctv2.m3u8
         self.assertIn("output_files", stats)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

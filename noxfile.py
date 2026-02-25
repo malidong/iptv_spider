@@ -84,16 +84,16 @@ def tests(session):
     dist_files = os.listdir("dist/")
     if len(dist_files) < 2:
         session.error("No distribution files generated. Build may have failed.")
-    
+
     # Get the source distribution (.tar.gz)
     generated_sdist = None
     for f in dist_files:
         if f.endswith(".tar.gz"):
             generated_sdist = os.path.join("dist/", f)
             break
-    
+
     if not generated_sdist:
         session.error("No .tar.gz distribution file found in dist/")
-    
+
     session.install(generated_sdist)
     session.run("pytest", "tests/", *session.posargs)

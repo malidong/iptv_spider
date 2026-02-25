@@ -19,7 +19,7 @@ if __name__ == "__main__":
         max_retries=config.get("max_retries", 3),
         request_timeout=config.get("request_timeout", 30)
     )
-    
+
     # Log statistics
     logger.info("=" * 50)
     logger.info("IPTV Spider Test Summary:")
