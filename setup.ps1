@@ -72,6 +72,12 @@ function Invoke-Setup {
             & uv run iptv-spider --help
         }
         "test" {
+            Write-Colored "[*] Installing test dependencies..." "Info"
+            & uv sync --extra test --quiet
+            if ($LASTEXITCODE -ne 0) {
+                Write-Colored "[!] Error: Failed to sync test dependencies" "Error"
+                exit $LASTEXITCODE
+            }
             Write-Colored "[*] Running test suite..." "Info"
             & uv run python -m pytest tests/ -v @CmdArgs
         }
@@ -99,6 +105,12 @@ function Invoke-Setup {
             & uv pip list @CmdArgs
         }
         "lint" {
+            Write-Colored "[*] Installing dev dependencies..." "Info"
+            & uv sync --extra dev --quiet
+            if ($LASTEXITCODE -ne 0) {
+                Write-Colored "[!] Error: Failed to sync dev dependencies" "Error"
+                exit $LASTEXITCODE
+            }
             Write-Colored "[*] Running code checks..." "Info"
             & uv run flake8 src/iptv_spider/ @CmdArgs
         }
