@@ -17,7 +17,14 @@ if __name__ == "__main__":
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
         max_retries=config.get("max_retries", 3),
-        request_timeout=config.get("request_timeout", 30)
+        request_timeout=config.get("request_timeout", 30),
+        epg_url=str(config.get("epg_url", "")),
+        output_with_epg=bool(config.get("output_with_epg", False)),
+        dedup_mode=str(config.get("dedup_mode", "url_fingerprint")),
+        dedup_keep=str(config.get("dedup_keep", "first")),
+        cache_enabled=bool(config.get("cache_enabled", True)),
+        cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
+        cache_file=str(config.get("cache_file", "")),
     )
 
     # Log statistics

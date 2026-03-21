@@ -18,7 +18,8 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from iptv_spider.channel import Channel
 from iptv_spider.logger import logger
-from iptv_spider.utils import get_config_dir
+from iptv_spider.utils import get_config_dir, url_fingerprint, utc_now_iso
+from datetime import datetime, timezone, timedelta
 
 # Simulating PotPlayer's User-Agent
 HEADERS = {
@@ -48,8 +49,14 @@ class M3U8:
         "channels",
         "black_servers",
         "tested_servers",
+        "tested_channels",
         "max_retries",
         "request_timeout",
+        "dedup_mode",
+        "dedup_keep",
+        "cache_enabled",
+        "cache_ttl_hours",
+        "cache_file",
     )
 
     def __init__(
@@ -58,6 +65,11 @@ class M3U8:
         regex_filter: str,
         max_retries: int = 3,
         request_timeout: int = 30,
+        dedup_mode: str = "url_fingerprint",
+        dedup_keep: str = "first",
+        cache_enabled: bool = True,
+        cache_ttl_hours: int = 24,
+        cache_file: Optional[str] = None,
     ):
         """
         Initialize an M3U8 object by loading channels from a file or URL.
@@ -79,6 +91,17 @@ class M3U8:
         self.channels: dict[str, list[Channel]] = self.load_file(file_path=path)
         self.black_servers: list[str] = self.__load_black_servers()
         self.tested_servers: dict[str, float] = self.__load_tested_servers()
+        self.tested_channels: dict[str, dict] = self.__load_tested_channels(
+            path=Path(cache_file) if cache_file else None
+        )
+        self.dedup_mode: str = dedup_mode
+        self.dedup_keep: str = dedup_keep
+        self.cache_enabled: bool = cache_enabled
+        self.cache_ttl_hours: int = cache_ttl_hours
+        self.cache_file: Optional[str] = cache_file
+
+        if self.dedup_mode == "url_fingerprint":
+            self.__dedup_channels_by_fingerprint()
 
     def __load_black_servers(self, path: Optional[Path] = None) -> List[str]:
         """
@@ -153,6 +176,60 @@ class M3U8:
             )
         except Exception as e:
             logger.warning(f"Failed to save tested servers cache: {e}")
+
+    def __load_tested_channels(self, path: Optional[Path] = None) -> Dict[str, dict]:
+        """
+        Load previously tested channel data from a JSON file.
+
+        Args:
+            path (Path): Path to "tested_channels.json".
+
+        Returns:
+            dict: Dictionary mapping URL fingerprints to test metadata.
+        """
+        tested_channels_path = path if path else get_config_dir() / "tested_channels.json"
+        try:
+            if tested_channels_path.is_file():
+                with open(tested_channels_path, "r", encoding="utf-8") as f:
+                    return json.load(f)
+        except Exception as e:
+            logger.warning(f"Failed to load tested channels cache: {e}")
+        return {}
+
+    def __save_tested_channels(self, path: Optional[Path] = None) -> None:
+        """
+        Save tested channel data to "tested_channels.json".
+
+        Args:
+            path (Path): The file path to save the cache.
+        """
+        tested_channels_path = path if path else get_config_dir() / "tested_channels.json"
+        try:
+            tested_channels_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(tested_channels_path, "w", encoding="utf-8") as f:
+                json.dump(self.tested_channels, f, indent=4)
+            logger.debug(
+                f"Tested channels cache saved: {len(self.tested_channels)} entries"
+            )
+        except Exception as e:
+            logger.warning(f"Failed to save tested channels cache: {e}")
+
+    def __dedup_channels_by_fingerprint(self) -> None:
+        """
+        Deduplicate channels by URL fingerprint within each channel name.
+        """
+        deduped: dict[str, list[Channel]] = {}
+        for channel_name, channels in self.channels.items():
+            seen: set[str] = set()
+            deduped_list: list[Channel] = []
+            for channel in channels:
+                fp = url_fingerprint(channel.media_url)
+                if fp in seen:
+                    continue
+                seen.add(fp)
+                deduped_list.append(channel)
+            deduped[channel_name] = deduped_list
+        self.channels = deduped
 
     def download_m3u8_file(self, url: str, save_path: Optional[Path] = None) -> str:
         """
@@ -302,6 +379,7 @@ class M3U8:
         """
         best_channels: dict[str, Channel] = {}
         channels_to_test: list = []
+        now = datetime.now(timezone.utc)
 
         # Prepare channels for testing
         for channel_name, channels in self.channels.items():
@@ -319,6 +397,28 @@ class M3U8:
                         f"Skipping blacklisted server: {server} for channel {channel_name}"
                     )
                     continue
+
+                fingerprint = url_fingerprint(channel.media_url)
+                if self.cache_enabled and fingerprint in self.tested_channels:
+                    cached = self.tested_channels.get(fingerprint, {})
+                    last_tested = cached.get("last_tested")
+                    if last_tested:
+                        try:
+                            cached_time = datetime.fromisoformat(last_tested)
+                            if cached_time.tzinfo is None:
+                                cached_time = cached_time.replace(tzinfo=timezone.utc)
+                            if now - cached_time <= timedelta(hours=self.cache_ttl_hours):
+                                channel.speed = cached.get("speed", channel.speed)
+                                channel.resolution = cached.get("resolution", channel.resolution)
+                                if channel_name not in best_channels:
+                                    best_channels[channel_name] = channel
+                                elif channel.speed > best_channels[channel_name].speed:
+                                    best_channels[channel_name] = channel
+                                if server not in self.tested_servers or channel.speed > self.tested_servers[server]:
+                                    self.tested_servers[server] = channel.speed
+                                continue
+                        except Exception:
+                            pass
 
                 channels_to_test.append((channel_name, channel))
 
@@ -358,6 +458,15 @@ class M3U8:
                     # Update tested server speed
                     if server not in self.tested_servers or speed > self.tested_servers[server]:
                         self.tested_servers[server] = speed
+                    # Update tested channel cache
+                    fingerprint = url_fingerprint(result_channel.media_url)
+                    self.tested_channels[fingerprint] = {
+                        "speed": speed,
+                        "resolution": result_channel.resolution,
+                        "last_tested": utc_now_iso(),
+                        "media_url": result_channel.media_url,
+                        "channel_name": result_channel.channel_name,
+                    }
 
                 except Exception as e:
                     logger.error(
@@ -376,6 +485,8 @@ class M3U8:
         # Save updated caches
         self.__save_black_servers()
         self.__save_tested_servers()
+        if self.cache_enabled:
+            self.__save_tested_channels(path=Path(self.cache_file) if self.cache_file else None)
 
         logger.info(
             f"Testing completed. Best channels: {len(best_channels)}, Blacklisted servers: {len(self.black_servers)}"

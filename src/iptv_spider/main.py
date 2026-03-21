@@ -24,7 +24,14 @@ def main(
     speed_threshold_mb: float = 0.3,
     speed_limit_mb: float = 2,
     max_retries: int = 3,
-    request_timeout: int = 30
+    request_timeout: int = 30,
+    epg_url: str = "",
+    output_with_epg: bool = False,
+    dedup_mode: str = "url_fingerprint",
+    dedup_keep: str = "first",
+    cache_enabled: bool = True,
+    cache_ttl_hours: int = 24,
+    cache_file: str = "",
 ) -> dict:
     """
     Main function to process an IPTV playlist.
@@ -58,7 +65,12 @@ def main(
         path=m3u_url,
         regex_filter=regex_filter,
         max_retries=max_retries,
-        request_timeout=request_timeout
+        request_timeout=request_timeout,
+        dedup_mode=dedup_mode,
+        dedup_keep=dedup_keep,
+        cache_enabled=cache_enabled,
+        cache_ttl_hours=cache_ttl_hours,
+        cache_file=cache_file if cache_file else None,
     )
 
     logger.info(f"Total channels filtered: {len(m3u8.channels)}")
@@ -90,6 +102,11 @@ def main(
     # Save results to an M3U file
     m3u_filename = os.path.join(output_dir, 'best_channels.m3u')
     with open(m3u_filename, 'w', encoding='utf-8') as m3u_file:
+        if output_with_epg:
+            if epg_url:
+                m3u_file.write(f'#EXTM3U url-tvg="{epg_url}"\n')
+            else:
+                m3u_file.write("#EXTM3U\n")
         for channel_name, channel_info in best_channels.items():
             m3u_file.write(f"{channel_info['meta']},{channel_info['name']}\n")
             m3u_file.write(f"{channel_info['media_url']}\n")
@@ -125,7 +142,14 @@ def entrypoint() -> None:
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
         max_retries=config.get("max_retries", 3),
-        request_timeout=config.get("request_timeout", 30)
+        request_timeout=config.get("request_timeout", 30),
+        epg_url=str(config.get("epg_url", "")),
+        output_with_epg=bool(config.get("output_with_epg", False)),
+        dedup_mode=str(config.get("dedup_mode", "url_fingerprint")),
+        dedup_keep=str(config.get("dedup_keep", "first")),
+        cache_enabled=bool(config.get("cache_enabled", True)),
+        cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
+        cache_file=str(config.get("cache_file", "")),
     )
 
     # Log statistics
@@ -155,7 +179,14 @@ if __name__ == "__main__":
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
         max_retries=config.get("max_retries", 3),
-        request_timeout=config.get("request_timeout", 30)
+        request_timeout=config.get("request_timeout", 30),
+        epg_url=str(config.get("epg_url", "")),
+        output_with_epg=bool(config.get("output_with_epg", False)),
+        dedup_mode=str(config.get("dedup_mode", "url_fingerprint")),
+        dedup_keep=str(config.get("dedup_keep", "first")),
+        cache_enabled=bool(config.get("cache_enabled", True)),
+        cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
+        cache_file=str(config.get("cache_file", "")),
     )
 
     # Log statistics
