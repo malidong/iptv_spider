@@ -12,6 +12,9 @@
 - **M3U8 文件处理**：支持从远程 URL 下载或本地路径读取。
 - **频道过滤**：使用正则表达式过滤频道名称。
 - **速度测试与优化**：自动测试流媒体速度并为每个频道选择最佳源。
+- **智能去重**：基于 URL 指纹去重，避免重复流源。
+- **增量测速缓存**：复用近期测速结果，减少重复测试。
+- **EPG 关联**：可选在输出 M3U 头部写入 `url-tvg` 节目单源。
 - **多格式输出**：
     - 保存为 JSON 文件（包含详细信息）。
     - 生成标准 M3U 播放列表。
@@ -55,6 +58,18 @@ iptv-spider --url_or_path "https://example.com/mylist.m3u" --filter "HBO|ESPN"
 iptv-spider --output_dir "./results"
 ```
 
+#### 输出带 EPG 的 M3U：
+
+```bash
+iptv-spider --output_with_epg --epg_url "http://epg.51zmt.top:8000/e.xml"
+```
+
+#### 去重与缓存控制：
+
+```bash
+iptv-spider --dedup_mode url_fingerprint --dedup_keep first --cache_enabled --cache_ttl_hours 24
+```
+
 ---
 
 ## 📋 参数说明
@@ -70,6 +85,14 @@ iptv-spider --output_dir "./results"
 | `--speed_limit_mb`   | `2.0`                                        | 达到此速度后停止测试的最大速度（MB/s）。               |
 | `--max_retries`      | `3`                                          | 网络请求失败的最大重试次数。                           |
 | `--request_timeout`  | `30`                                         | HTTP 请求超时时间（秒）。                              |
+| `--epg_url`          | `http://epg.51zmt.top:8000/e.xml`            | 可选 EPG 源地址，用于写入 M3U 头部。                   |
+| `--output_with_epg`  | `False`                                      | 若提供 EPG 则写入 `#EXTM3U url-tvg="..."` 头部。       |
+| `--dedup_mode`       | `url_fingerprint`                            | 去重模式（`url_fingerprint` 或 `none`）。             |
+| `--dedup_keep`       | `first`                                      | 去重保留策略（`first` 或 `fastest`）。                 |
+| `--cache_enabled`    | `True`                                       | 是否启用测速缓存。                                    |
+| `--cache_ttl_hours`  | `24`                                         | 缓存有效期（小时）。                                  |
+| `--cache_file`       | `~/.iptv-spider/tested_channels.json`        | 测速缓存文件路径。                                    |
+| `--cache_clear`      | `False`                                      | 运行前清空测速缓存。                                  |
 
 ---
 
@@ -235,8 +258,16 @@ nox -s lint        # 运行 linting
 - **ffprobe**：用于检测流媒体分辨率（FFmpeg 的一部分）
 - **m3u8**：M3U8 播放列表格式解析
 - **requests**：用于下载 M3U8 文件和测试流媒体的 HTTP 请求
-- **pytest**：单元测试框架（开发依赖）
+- **pytest**：单元测试框架（测试依赖）
 - **flake8**：代码 Linting（开发依赖）
+
+---
+
+## ✨ 最新更新
+
+- ✅ **EPG 支持**：可选在 M3U 头部注入 `url-tvg`。
+- ✅ **URL 指纹去重**：基于规范化 URL 去重。
+- ✅ **增量测速缓存**：复用近期测速结果，加速运行。
 
 ---
 

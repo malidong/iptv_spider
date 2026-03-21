@@ -1,7 +1,10 @@
 import json
+import hashlib
 from pathlib import Path
 from argparse import Namespace
+from urllib.parse import urlparse, urlunparse, parse_qsl, urlencode
 import argparse
+from datetime import datetime, timezone
 
 DEFAULT_CONFIG = {
     "m3u8_url": "https://live.iptv365.org/live.m3u",
@@ -11,7 +14,15 @@ DEFAULT_CONFIG = {
     "speed_threshold_mb": 0.3,  # Minimum speed threshold in MB/s for output
     "speed_limit_mb": 2,  # Speed limit in MB/s for early termination
     "max_retries": 3,  # Maximum retry attempts for network requests
-    "request_timeout": 30  # Timeout in seconds for HTTP requests
+    "request_timeout": 30,  # Timeout in seconds for HTTP requests
+    "epg_url": "http://epg.51zmt.top:8000/e.xml",
+    "output_with_epg": False,
+    "dedup_mode": "url_fingerprint",
+    "dedup_keep": "first",
+    "cache_enabled": True,
+    "cache_ttl_hours": 24,
+    "cache_file": str(Path.home() / ".iptv-spider" / "tested_channels.json"),
+    "cache_clear": False,
 }
 
 
@@ -83,6 +94,69 @@ def arg_parser() -> Namespace:
         help="Timeout in seconds for HTTP requests. Defaults to 30 seconds."
     )
 
+    # Argument: EPG URL
+    parser.add_argument(
+        "--epg_url",
+        type=str,
+        default="http://epg.51zmt.top:8000/e.xml",
+        help="Optional EPG URL to embed into output M3U header."
+    )
+
+    # Argument: Output M3U with EPG header
+    parser.add_argument(
+        "--output_with_epg",
+        action="store_true",
+        help="Write M3U header with EPG url-tvg when epg_url is provided."
+    )
+
+    # Argument: Dedup mode
+    parser.add_argument(
+        "--dedup_mode",
+        type=str,
+        default="url_fingerprint",
+        choices=["url_fingerprint", "none"],
+        help="Deduplication mode. Defaults to url_fingerprint."
+    )
+
+    # Argument: Dedup keep strategy
+    parser.add_argument(
+        "--dedup_keep",
+        type=str,
+        default="first",
+        choices=["first", "fastest"],
+        help="Deduplication keep strategy. Defaults to first."
+    )
+
+    # Argument: Cache enabled
+    parser.add_argument(
+        "--cache_enabled",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Enable or disable speed cache."
+    )
+
+    # Argument: Cache TTL hours
+    parser.add_argument(
+        "--cache_ttl_hours",
+        type=int,
+        default=24,
+        help="Cache TTL in hours. Defaults to 24."
+    )
+
+    # Argument: Cache file
+    parser.add_argument(
+        "--cache_file",
+        type=str,
+        default=str(Path.home() / ".iptv-spider" / "tested_channels.json"),
+        help="Path to speed cache file."
+    )
+
+    parser.add_argument(
+        "--cache_clear",
+        action="store_true",
+        help="Clear speed cache before run."
+    )
+
     return parser.parse_args()
 
 
@@ -130,3 +204,39 @@ def load_config(file_name: str = "config.json") -> dict:
         # Create default config if not exists
         save_config(DEFAULT_CONFIG, file_name)
         return DEFAULT_CONFIG
+
+
+def normalize_url(url: str) -> str:
+    """
+    Normalize URL for fingerprinting.
+
+    - Lowercase scheme and host
+    - Remove fragment
+    - Sort query parameters
+    """
+    parsed = urlparse(url)
+    netloc = parsed.netloc.lower()
+    scheme = parsed.scheme.lower()
+    query = urlencode(sorted(parse_qsl(parsed.query, keep_blank_values=True)))
+    normalized = parsed._replace(
+        scheme=scheme,
+        netloc=netloc,
+        query=query,
+        fragment=""
+    )
+    return urlunparse(normalized)
+
+
+def url_fingerprint(url: str) -> str:
+    """
+    Generate a stable fingerprint for a URL.
+    """
+    normalized = normalize_url(url)
+    return hashlib.sha1(normalized.encode("utf-8")).hexdigest()
+
+
+def utc_now_iso() -> str:
+    """
+    Return current UTC time in ISO format.
+    """
+    return datetime.now(timezone.utc).isoformat()

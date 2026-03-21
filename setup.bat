@@ -52,6 +52,12 @@ if /i "%CMD%"=="help" (
 )
 
 if /i "%CMD%"=="test" (
+    echo [*] Installing test dependencies...
+    uv sync --extra test --quiet
+    if errorlevel 1 (
+        echo [!] Error: Failed to sync test dependencies
+        exit /b 1
+    )
     echo [*] Running test suite...
     uv run python -m pytest tests/ -v
     goto :end
@@ -89,6 +95,12 @@ if /i "%CMD%"=="list" (
 )
 
 if /i "%CMD%"=="lint" (
+    echo [*] Installing dev dependencies...
+    uv sync --extra dev --quiet
+    if errorlevel 1 (
+        echo [!] Error: Failed to sync dev dependencies
+        exit /b 1
+    )
     echo [*] Running code checks...
     uv run flake8 src/iptv_spider/
     goto :end

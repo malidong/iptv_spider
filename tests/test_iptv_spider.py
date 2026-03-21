@@ -13,7 +13,7 @@ from unittest.mock import patch, MagicMock
 
 from src.iptv_spider.m3u import M3U8
 from src.iptv_spider.channel import Channel
-from src.iptv_spider.utils import arg_parser, get_config_dir
+from src.iptv_spider.utils import arg_parser, get_config_dir, url_fingerprint
 from src.iptv_spider.main import main
 
 
@@ -133,6 +133,113 @@ udp://example.com/hbo
         )
         self.assertIsInstance(m3u8.tested_servers, dict)
 
+    def test_m3u8_dedup_by_url_fingerprint(self):
+        """Test deduplication by URL fingerprint within a channel name."""
+        content = """#EXTM3U
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8?b=2&a=1
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8?a=1&b=2
+"""
+        temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
+        temp_m3u.write(content)
+        temp_m3u.close()
+        try:
+            m3u8 = M3U8(
+                path=temp_m3u.name,
+                regex_filter=r".*",
+                max_retries=1,
+                request_timeout=10,
+                dedup_mode="url_fingerprint",
+            )
+            self.assertEqual(len(m3u8.channels["CCTV-1"]), 1)
+        finally:
+            import os
+            if os.path.exists(temp_m3u.name):
+                os.unlink(temp_m3u.name)
+
+    def test_m3u8_uses_speed_cache(self):
+        """Test that speed cache avoids re-testing when within TTL."""
+        content = """#EXTM3U
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8
+"""
+        temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
+        temp_m3u.write(content)
+        temp_m3u.close()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_file = Path(tmpdir) / "tested_channels.json"
+            fp = url_fingerprint("http://example.com/cctv1.m3u8")
+            cache_payload = {
+                fp: {
+                    "speed": 123456.0,
+                    "resolution": "1280x720",
+                    "last_tested": "2099-01-01T00:00:00+00:00",
+                    "media_url": "http://example.com/cctv1.m3u8",
+                    "channel_name": "CCTV-1",
+                }
+            }
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump(cache_payload, f)
+            try:
+                m3u8 = M3U8(
+                    path=temp_m3u.name,
+                    regex_filter=r".*",
+                    max_retries=1,
+                    request_timeout=10,
+                    cache_enabled=True,
+                    cache_ttl_hours=24,
+                    cache_file=str(cache_file),
+                )
+                with patch("src.iptv_spider.channel.Channel.get_speed") as mock_get_speed:
+                    best = m3u8.get_best_channels()
+                    mock_get_speed.assert_not_called()
+                self.assertIn("CCTV-1", best)
+                self.assertEqual(best["CCTV-1"].speed, 123456.0)
+            finally:
+                import os
+                if os.path.exists(temp_m3u.name):
+                    os.unlink(temp_m3u.name)
+
+    def test_m3u8_cache_clear(self):
+        """Test clearing cache via cache_clear flag."""
+        content = """#EXTM3U
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8
+"""
+        temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
+        temp_m3u.write(content)
+        temp_m3u.close()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_file = Path(tmpdir) / "tested_channels.json"
+            fp = url_fingerprint("http://example.com/cctv1.m3u8")
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump({fp: {"speed": 1, "last_tested": "2099-01-01T00:00:00+00:00"}}, f)
+            try:
+                m3u8 = M3U8(
+                    path=temp_m3u.name,
+                    regex_filter=r".*",
+                    max_retries=1,
+                    request_timeout=10,
+                    cache_enabled=True,
+                    cache_clear=True,
+                    cache_file=str(cache_file),
+                )
+                self.assertEqual(m3u8.tested_channels, {})
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                self.assertEqual(saved, {})
+            finally:
+                import os
+                if os.path.exists(temp_m3u.name):
+                    os.unlink(temp_m3u.name)
+
 
 class TestUtilsFunctions(unittest.TestCase):
     """Test cases for utility functions."""
@@ -148,6 +255,13 @@ class TestUtilsFunctions(unittest.TestCase):
             self.assertEqual(args.speed_limit_mb, 2)
             self.assertEqual(args.max_retries, 3)
             self.assertEqual(args.request_timeout, 30)
+            self.assertEqual(args.epg_url, "http://epg.51zmt.top:8000/e.xml")
+            self.assertFalse(args.output_with_epg)
+            self.assertEqual(args.dedup_mode, "url_fingerprint")
+            self.assertEqual(args.dedup_keep, "first")
+            self.assertTrue(args.cache_enabled)
+            self.assertEqual(args.cache_ttl_hours, 24)
+            self.assertFalse(args.cache_clear)
 
     def test_get_config_dir(self):
         """Test configuration directory retrieval."""
@@ -232,6 +346,42 @@ http://example.com/cctv2.m3u8
         self.assertIn("valid_channels_output", stats)
         self.assertIn("speed_threshold_mb", stats)
         self.assertIn("output_files", stats)
+
+    @patch("src.iptv_spider.main.M3U8")
+    def test_main_writes_epg_header(self, mock_m3u8):
+        """Test that M3U output includes EPG header when enabled."""
+        mock_instance = MagicMock()
+        channel = MagicMock()
+        channel.channel_name = "CCTV-1"
+        channel.meta = "#EXTINF:-1 tvg-name=\"CCTV1\""
+        channel.media_url = "http://example.com/cctv1.m3u8"
+        channel.speed = 1000000
+        channel.resolution = "1920x1080"
+        mock_instance.channels = {"CCTV-1": []}
+        mock_instance.get_best_channels.return_value = {"CCTV-1": channel}
+        mock_m3u8.return_value = mock_instance
+
+        output_dir = tempfile.mkdtemp()
+        try:
+            main(
+                m3u_url=self.temp_m3u.name,
+                regex_filter=r"CCTV.*",
+                output_dir=output_dir,
+                speed_threshold_mb=0.0,
+                speed_limit_mb=2,
+                max_retries=1,
+                request_timeout=10,
+                epg_url="http://example.com/epg.xml",
+                output_with_epg=True,
+            )
+            m3u_path = Path(output_dir) / "best_channels.m3u"
+            with open(m3u_path, "r", encoding="utf-8") as f:
+                first_line = f.readline().strip()
+            self.assertEqual(first_line, '#EXTM3U url-tvg="http://example.com/epg.xml"')
+        finally:
+            import shutil
+            if Path(output_dir).exists():
+                shutil.rmtree(output_dir)
 
 
 if __name__ == "__main__":

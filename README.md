@@ -1,7 +1,7 @@
 # IPTV Spider
 
 [![PyPI Version](https://img.shields.io/pypi/v/iptv-spider.svg)](https://pypi.org/project/iptv-spider/)
-[![License](https://img.shields.io/pypi/l/iptv-spider.svg)](https://github.com/yourusername/iptv-spider/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/iptv-spider.svg)](https://github.com/malidong/iptv_spider/blob/main/LICENSE.txt)
 
 **IPTV Spider** is a tool for managing M3U8 playlists, allowing you to download IPTV resources, filter channels based on
 specific criteria, and output the best-performing stream for each channel based on speed tests.
@@ -13,6 +13,9 @@ specific criteria, and output the best-performing stream for each channel based 
 - **M3U8 File Handling**: Download from a remote URL or read from a local path.
 - **Channel Filtering**: Use regular expressions to filter channel names.
 - **Speed Test and Optimization**: Automatically test stream speeds and select the best source for each channel.
+- **Smart Deduplication**: Deduplicate by URL fingerprint to avoid duplicate streams.
+- **Incremental Speed Cache**: Reuse recent speed test results to reduce repeated testing.
+- **EPG Integration**: Optionally embed `url-tvg` EPG source in the output M3U header.
 - **Multi-format Output**:
     - Save results as a JSON file.
     - Generate a standard M3U playlist with the best channels.
@@ -56,6 +59,18 @@ iptv-spider --url_or_path "https://example.com/mylist.m3u" --filter "HBO|ESPN"
 iptv-spider --output_dir "./results"
 ```
 
+#### Enable EPG in Output:
+
+```bash
+iptv-spider --output_with_epg --epg_url "http://epg.51zmt.top:8000/e.xml"
+```
+
+#### Control Deduplication & Cache:
+
+```bash
+iptv-spider --dedup_mode url_fingerprint --dedup_keep first --cache_enabled --cache_ttl_hours 24
+```
+
 ---
 
 ## 📋 Parameters
@@ -71,6 +86,14 @@ The following command-line arguments are supported:
 | `--speed_limit_mb`   | `2.0`                                        | Maximum speed (MB/s) for early termination.                      |
 | `--max_retries`      | `3`                                          | Maximum retry attempts per network request.                      |
 | `--request_timeout`  | `30`                                         | HTTP request timeout in seconds.                                 |
+| `--epg_url`          | `http://epg.51zmt.top:8000/e.xml`            | Optional EPG URL to embed into M3U header.                        |
+| `--output_with_epg`  | `False`                                      | Write `#EXTM3U url-tvg="..."` header when EPG is provided.        |
+| `--dedup_mode`       | `url_fingerprint`                            | Deduplication mode (`url_fingerprint` or `none`).                |
+| `--dedup_keep`       | `first`                                      | Deduplication keep strategy (`first` or `fastest`).               |
+| `--cache_enabled`    | `True`                                       | Enable speed cache.                                              |
+| `--cache_ttl_hours`  | `24`                                         | Cache TTL in hours.                                              |
+| `--cache_file`       | `~/.iptv-spider/tested_channels.json`        | Path to speed cache file.                                        |
+| `--cache_clear`      | `False`                                      | Clear speed cache before run.                                    |
 
 ---
 
@@ -132,7 +155,7 @@ http://example.com/cctv5plus.m3u8
 
 ---
 
-## � Advanced Setup
+## 🧰 Advanced Setup
 
 ### Using UV (Recommended for Development)
 
@@ -146,7 +169,7 @@ pip install uv
 git clone https://github.com/malidong/iptv_spider.git
 cd iptv_spider
 
-# Initialize the environment
+# Initialize the environment (creates/updates .venv)
 uv sync
 
 # Run the project
@@ -205,7 +228,9 @@ iptv-spider \
 ### Run Tests
 
 ```bash
-pytest tests/
+# With UV (recommended)
+uv sync --extra test
+uv run pytest tests/
 ```
 
 The project includes 11 comprehensive test cases covering:
@@ -217,8 +242,9 @@ The project includes 11 comprehensive test cases covering:
 ### Code Quality
 
 ```bash
-# Run flake8 linting
-flake8 src/ tests/ --select E,W,F
+# With UV (recommended)
+uv sync --extra dev
+uv run flake8 src/ tests/ --select E,W,F
 
 # Run with nox for all Python versions
 nox -s tests-3.14  # Test with Python 3.14
@@ -238,8 +264,16 @@ When pushing to GitHub, automated tests run on:
 - **ffprobe**: Required to detect stream resolution (part of FFmpeg)
 - **m3u8**: M3U8 playlist format parsing
 - **requests**: HTTP requests for downloading M3U8 files and testing streams
-- **pytest**: Unit testing framework (development dependency)
+- **pytest**: Unit testing framework (test dependency)
 - **flake8**: Code linting (development dependency)
+ 
+---
+
+## ✨ Recent Updates
+
+- ✅ **EPG Support**: Optional `url-tvg` injection into M3U output header.
+- ✅ **URL Fingerprint Dedup**: Deduplicate duplicate streams by normalized URL.
+- ✅ **Incremental Speed Cache**: Reuse recent speed test results to speed up runs.
 
 ---
 
