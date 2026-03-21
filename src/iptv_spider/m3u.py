@@ -57,6 +57,7 @@ class M3U8:
         "cache_enabled",
         "cache_ttl_hours",
         "cache_file",
+        "cache_clear",
     )
 
     def __init__(
@@ -70,6 +71,7 @@ class M3U8:
         cache_enabled: bool = True,
         cache_ttl_hours: int = 24,
         cache_file: Optional[str] = None,
+        cache_clear: bool = False,
     ):
         """
         Initialize an M3U8 object by loading channels from a file or URL.
@@ -99,6 +101,11 @@ class M3U8:
         self.cache_enabled: bool = cache_enabled
         self.cache_ttl_hours: int = cache_ttl_hours
         self.cache_file: Optional[str] = cache_file
+        self.cache_clear: bool = cache_clear
+
+        if self.cache_clear:
+            self.tested_channels = {}
+            self.__save_tested_channels(path=Path(self.cache_file) if self.cache_file else None)
 
         if self.dedup_mode == "url_fingerprint":
             self.__dedup_channels_by_fingerprint()
@@ -214,21 +221,66 @@ class M3U8:
         except Exception as e:
             logger.warning(f"Failed to save tested channels cache: {e}")
 
+    def __parse_cache_time(self, value: str) -> Optional[datetime]:
+        """
+        Parse ISO cache time to timezone-aware datetime (UTC).
+        """
+        try:
+            if value.endswith("Z"):
+                value = value.replace("Z", "+00:00")
+            parsed = datetime.fromisoformat(value)
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=timezone.utc)
+            return parsed.astimezone(timezone.utc)
+        except Exception:
+            return None
+
+    def __purge_expired_cache(self, now: datetime) -> None:
+        """
+        Remove expired cache entries based on TTL.
+        """
+        if not self.cache_enabled:
+            return
+        ttl = timedelta(hours=self.cache_ttl_hours)
+        expired = []
+        for fp, data in self.tested_channels.items():
+            last_tested = data.get("last_tested")
+            if not last_tested:
+                continue
+            parsed = self.__parse_cache_time(last_tested)
+            if not parsed:
+                continue
+            if now - parsed > ttl:
+                expired.append(fp)
+        for fp in expired:
+            self.tested_channels.pop(fp, None)
+
     def __dedup_channels_by_fingerprint(self) -> None:
         """
         Deduplicate channels by URL fingerprint within each channel name.
         """
         deduped: dict[str, list[Channel]] = {}
         for channel_name, channels in self.channels.items():
-            seen: set[str] = set()
-            deduped_list: list[Channel] = []
+            seen: dict[str, Channel] = {}
+            best_speed: dict[str, float] = {}
             for channel in channels:
                 fp = url_fingerprint(channel.media_url)
-                if fp in seen:
+                if fp not in seen:
+                    seen[fp] = channel
+                    cached_speed = self.tested_channels.get(fp, {}).get("speed")
+                    if cached_speed is not None:
+                        best_speed[fp] = float(cached_speed)
                     continue
-                seen.add(fp)
-                deduped_list.append(channel)
-            deduped[channel_name] = deduped_list
+
+                if self.dedup_keep == "fastest":
+                    cached_speed = self.tested_channels.get(fp, {}).get("speed")
+                    if cached_speed is None:
+                        continue
+                    cached_speed = float(cached_speed)
+                    if fp not in best_speed or cached_speed > best_speed[fp]:
+                        best_speed[fp] = cached_speed
+                        seen[fp] = channel
+            deduped[channel_name] = list(seen.values())
         self.channels = deduped
 
     def download_m3u8_file(self, url: str, save_path: Optional[Path] = None) -> str:
@@ -380,6 +432,7 @@ class M3U8:
         best_channels: dict[str, Channel] = {}
         channels_to_test: list = []
         now = datetime.now(timezone.utc)
+        self.__purge_expired_cache(now)
 
         # Prepare channels for testing
         for channel_name, channels in self.channels.items():
@@ -403,22 +456,17 @@ class M3U8:
                     cached = self.tested_channels.get(fingerprint, {})
                     last_tested = cached.get("last_tested")
                     if last_tested:
-                        try:
-                            cached_time = datetime.fromisoformat(last_tested)
-                            if cached_time.tzinfo is None:
-                                cached_time = cached_time.replace(tzinfo=timezone.utc)
-                            if now - cached_time <= timedelta(hours=self.cache_ttl_hours):
-                                channel.speed = cached.get("speed", channel.speed)
-                                channel.resolution = cached.get("resolution", channel.resolution)
-                                if channel_name not in best_channels:
-                                    best_channels[channel_name] = channel
-                                elif channel.speed > best_channels[channel_name].speed:
-                                    best_channels[channel_name] = channel
-                                if server not in self.tested_servers or channel.speed > self.tested_servers[server]:
-                                    self.tested_servers[server] = channel.speed
-                                continue
-                        except Exception:
-                            pass
+                        cached_time = self.__parse_cache_time(last_tested)
+                        if cached_time and now - cached_time <= timedelta(hours=self.cache_ttl_hours):
+                            channel.speed = cached.get("speed", channel.speed)
+                            channel.resolution = cached.get("resolution", channel.resolution)
+                            if channel_name not in best_channels:
+                                best_channels[channel_name] = channel
+                            elif channel.speed > best_channels[channel_name].speed:
+                                best_channels[channel_name] = channel
+                            if server not in self.tested_servers or channel.speed > self.tested_servers[server]:
+                                self.tested_servers[server] = channel.speed
+                            continue
 
                 channels_to_test.append((channel_name, channel))
 

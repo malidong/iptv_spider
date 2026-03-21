@@ -25,6 +25,7 @@ if __name__ == "__main__":
         cache_enabled=bool(config.get("cache_enabled", True)),
         cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
         cache_file=str(config.get("cache_file", "")),
+        cache_clear=bool(config.get("cache_clear", False)),
     )
 
     # Log statistics

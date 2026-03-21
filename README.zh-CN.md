@@ -92,6 +92,7 @@ iptv-spider --dedup_mode url_fingerprint --dedup_keep first --cache_enabled --ca
 | `--cache_enabled`    | `True`                                       | 是否启用测速缓存。                                    |
 | `--cache_ttl_hours`  | `24`                                         | 缓存有效期（小时）。                                  |
 | `--cache_file`       | `~/.iptv-spider/tested_channels.json`        | 测速缓存文件路径。                                    |
+| `--cache_clear`      | `False`                                      | 运行前清空测速缓存。                                  |
 
 ---
 

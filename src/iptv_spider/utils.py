@@ -22,6 +22,7 @@ DEFAULT_CONFIG = {
     "cache_enabled": True,
     "cache_ttl_hours": 24,
     "cache_file": str(Path.home() / ".iptv-spider" / "tested_channels.json"),
+    "cache_clear": False,
 }
 
 
@@ -148,6 +149,12 @@ def arg_parser() -> Namespace:
         type=str,
         default=str(Path.home() / ".iptv-spider" / "tested_channels.json"),
         help="Path to speed cache file."
+    )
+
+    parser.add_argument(
+        "--cache_clear",
+        action="store_true",
+        help="Clear speed cache before run."
     )
 
     return parser.parse_args()

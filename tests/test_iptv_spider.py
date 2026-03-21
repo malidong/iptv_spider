@@ -205,6 +205,41 @@ http://example.com/cctv1.m3u8
                 if os.path.exists(temp_m3u.name):
                     os.unlink(temp_m3u.name)
 
+    def test_m3u8_cache_clear(self):
+        """Test clearing cache via cache_clear flag."""
+        content = """#EXTM3U
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8
+"""
+        temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
+        temp_m3u.write(content)
+        temp_m3u.close()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cache_file = Path(tmpdir) / "tested_channels.json"
+            fp = url_fingerprint("http://example.com/cctv1.m3u8")
+            with open(cache_file, "w", encoding="utf-8") as f:
+                json.dump({fp: {"speed": 1, "last_tested": "2099-01-01T00:00:00+00:00"}}, f)
+            try:
+                m3u8 = M3U8(
+                    path=temp_m3u.name,
+                    regex_filter=r".*",
+                    max_retries=1,
+                    request_timeout=10,
+                    cache_enabled=True,
+                    cache_clear=True,
+                    cache_file=str(cache_file),
+                )
+                self.assertEqual(m3u8.tested_channels, {})
+                with open(cache_file, "r", encoding="utf-8") as f:
+                    saved = json.load(f)
+                self.assertEqual(saved, {})
+            finally:
+                import os
+                if os.path.exists(temp_m3u.name):
+                    os.unlink(temp_m3u.name)
+
 
 class TestUtilsFunctions(unittest.TestCase):
     """Test cases for utility functions."""
@@ -226,6 +261,7 @@ class TestUtilsFunctions(unittest.TestCase):
             self.assertEqual(args.dedup_keep, "first")
             self.assertTrue(args.cache_enabled)
             self.assertEqual(args.cache_ttl_hours, 24)
+            self.assertFalse(args.cache_clear)
 
     def test_get_config_dir(self):
         """Test configuration directory retrieval."""

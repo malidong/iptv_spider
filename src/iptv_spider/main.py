@@ -32,6 +32,7 @@ def main(
     cache_enabled: bool = True,
     cache_ttl_hours: int = 24,
     cache_file: str = "",
+    cache_clear: bool = False,
 ) -> dict:
     """
     Main function to process an IPTV playlist.
@@ -71,6 +72,7 @@ def main(
         cache_enabled=cache_enabled,
         cache_ttl_hours=cache_ttl_hours,
         cache_file=cache_file if cache_file else None,
+        cache_clear=cache_clear,
     )
 
     logger.info(f"Total channels filtered: {len(m3u8.channels)}")
@@ -102,11 +104,11 @@ def main(
     # Save results to an M3U file
     m3u_filename = os.path.join(output_dir, 'best_channels.m3u')
     with open(m3u_filename, 'w', encoding='utf-8') as m3u_file:
-        if output_with_epg:
-            if epg_url:
-                m3u_file.write(f'#EXTM3U url-tvg="{epg_url}"\n')
-            else:
-                m3u_file.write("#EXTM3U\n")
+        m3u_file.write(
+            f'#EXTM3U url-tvg="{epg_url}"\n'
+            if (output_with_epg and epg_url)
+            else "#EXTM3U\n"
+        )
         for channel_name, channel_info in best_channels.items():
             m3u_file.write(f"{channel_info['meta']},{channel_info['name']}\n")
             m3u_file.write(f"{channel_info['media_url']}\n")
@@ -150,6 +152,7 @@ def entrypoint() -> None:
         cache_enabled=bool(config.get("cache_enabled", True)),
         cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
         cache_file=str(config.get("cache_file", "")),
+        cache_clear=bool(config.get("cache_clear", False)),
     )
 
     # Log statistics
@@ -165,37 +168,4 @@ def entrypoint() -> None:
 
 
 if __name__ == "__main__":
-    # Parse command-line arguments
-    args = arg_parser()
-    config = load_config()
-    config.update(args.__dict__)
-
-    # Run the main program with provided arguments
-    logger.info("Starting IPTV Spider...")
-    stats = main(
-        m3u_url=str(config.get("url_or_path", "https://live.iptv365.org/live.m3u")),
-        regex_filter=str(config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")),
-        output_dir=str(config.get("output_dir", ".")),
-        speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
-        speed_limit_mb=config.get("speed_limit_mb", 2),
-        max_retries=config.get("max_retries", 3),
-        request_timeout=config.get("request_timeout", 30),
-        epg_url=str(config.get("epg_url", "")),
-        output_with_epg=bool(config.get("output_with_epg", False)),
-        dedup_mode=str(config.get("dedup_mode", "url_fingerprint")),
-        dedup_keep=str(config.get("dedup_keep", "first")),
-        cache_enabled=bool(config.get("cache_enabled", True)),
-        cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
-        cache_file=str(config.get("cache_file", "")),
-    )
-
-    # Log statistics
-    logger.info("=" * 50)
-    logger.info("IPTV Spider Test Summary:")
-    logger.info(f"Total channels filtered: {stats['total_channels_filtered']}")
-    logger.info(f"Best channels tested: {stats['best_channels_tested']}")
-    logger.info(f"Valid channels output: {stats['valid_channels_output']}")
-    logger.info(f"Speed threshold: {stats['speed_threshold_mb']} MB/s")
-    logger.info(f"Output files: {', '.join(stats['output_files'])}")
-    logger.info("=" * 50)
-    logger.info("IPTV Spider finished execution.")
+    entrypoint()

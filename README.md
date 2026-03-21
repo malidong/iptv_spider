@@ -93,6 +93,7 @@ The following command-line arguments are supported:
 | `--cache_enabled`    | `True`                                       | Enable speed cache.                                              |
 | `--cache_ttl_hours`  | `24`                                         | Cache TTL in hours.                                              |
 | `--cache_file`       | `~/.iptv-spider/tested_channels.json`        | Path to speed cache file.                                        |
+| `--cache_clear`      | `False`                                      | Clear speed cache before run.                                    |
 
 ---
 
