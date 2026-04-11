@@ -85,7 +85,63 @@
 | `big-pickle` | 免费 | 实验性 | 否 |
 | `qwen3.6-plus-free` | 免费 | 高性能 | 否 |
 
-### 故障排除
+### 配置 GitHub 分支保护规则
+
+此项目已启用 OpenCode 自动审查。为了不被人工 review 要求阻挡，需要调整分支保护规则。
+
+**目标：** 允许在 OpenCode 批准后合并，不强制要求具有 write 权限的人工 review。
+
+**步骤：**
+
+1. 进入仓库 **Settings** → **Branches**
+2. 找到 `dev` 分支的保护规则，点击编辑（或创建新规则）
+3. 配置如下：
+
+| 设置项 | 推荐配置 | 说明 |
+|-------|--------|------|
+| **Require a pull request before merging** | ✅ 开启 | 仍然要求 PR，确保有审查记录 |
+| **Require approvals** | ❌ **关闭** | **关键** - 取消需要人工批准的要求 |
+| **Require status checks to pass before merging** | ✅ 开启 | CI 检查必须通过（lint, test, build） |
+| **Require branches to be up to date before merging** | ✅ 推荐 | 合并前同步最新代码 |
+| **Include administrators** | ✅ 可选 | 规则对 admin 也适用 |
+
+4. 点击 "Save changes"
+
+### 合并流程
+
+```
+1. 创建 PR
+   ↓
+2. 自动检查运行
+   - Lint, Test, Build 检查
+   - OpenCode 自动审查 (5-10 分钟)
+   ↓
+3. 所有检查通过
+   ↓
+4. 手动点击 "Merge pull request" 合并
+   ↓
+5. 代码合并到 dev 分支
+```
+
+### OpenCode 的作用
+
+- ✅ 自动审查每个 PR 的代码质量、测试、安全性等
+- ✅ 在评论中给出明确的建议（可合并/需改进）
+- ✅ 记录审查意见，便于追溯
+- ⚠️ **不强制阻止合并** - 最终合并决定由你手动执行
+
+### 何时手动合并
+
+当满足以下条件时，可以手动合并：
+1. ✅ 所有 CI 检查通过（lint, test, build）
+2. ✅ OpenCode 的评论中提到 `✅ APPROVED FOR MERGE` 或代码质量可接受
+3. ✅ (可选) 有至少 1 个其他人的赞同评论
+
+---
+
+**原问题：** "Review required - At least 1 approving review is required"
+
+**解决方案：** 在分支保护规则中关闭 "Require approvals"，这样 OpenCode 的审查记录就足够了，不必等待真人批准。
 
 **错误：`ProviderModelNotFoundError`**
 - 检查模型名称格式是否为 `opencode/<model-id>`
