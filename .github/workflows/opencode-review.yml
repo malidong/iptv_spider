@@ -22,7 +22,7 @@ jobs:
       - name: Run OpenCode PR Review
         uses: anomalyco/opencode/github@latest
         with:
-          model: zen/minimax-m2.5-free
+          model: opencode/gpt-5-nano
           prompt: |
             Review this pull request and provide feedback:
             

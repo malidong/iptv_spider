@@ -21,7 +21,7 @@ jobs:
       - name: Run OpenCode Issue Analysis
         uses: anomalyco/opencode/github@latest
         with:
-          model: zen/minimax-m2.5-free
+          model: opencode/gpt-5-nano
           prompt: |
             Analyze this issue and provide implementation guidance:
             

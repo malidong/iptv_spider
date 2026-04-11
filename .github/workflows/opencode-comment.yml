@@ -27,4 +27,4 @@ jobs:
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
         with:
-          model: zen/minimax-m2.5-free
+          model: opencode/gpt-5-nano
