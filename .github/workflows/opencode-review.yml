@@ -1,0 +1,38 @@
+name: OpenCode PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode PR Review
+        uses: anomalyco/opencode/github@latest
+        with:
+          model: zen/minimax-m2.5-free
+          prompt: |
+            Review this pull request and provide feedback:
+            
+            1. **Code Quality**: Check for code quality issues, style consistency, and best practices
+            2. **Testing**: Verify that tests are adequate and cover edge cases
+            3. **Documentation**: Check if documentation is updated appropriately
+            4. **Performance**: Look for potential performance issues or bottlenecks
+            5. **Security**: Identify any security vulnerabilities or concerns
+            6. **Compatibility**: Check for backward compatibility issues
+            7. **Suggestions**: Provide specific, actionable improvements
+            
+            Focus on constructive feedback and highlight what's done well.
+            Be aware of this project's conventions and patterns.
