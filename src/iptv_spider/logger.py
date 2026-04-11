@@ -24,11 +24,15 @@ from pathlib import Path
 from iptv_spider.utils import get_config_dir
 
 # Log directory and file name
-LOG_DIR: Path = get_config_dir() / "logs"
-LOG_FILE: str = f"{datetime.today().strftime('%Y-%m-%d')}.log"
+try:
+    LOG_DIR: Path = get_config_dir() / "logs"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except (OSError, PermissionError):
+    # Fall back to a local path when HOME/config dir is not writable
+    LOG_DIR = Path.cwd() / ".iptv-spider" / "logs"
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-# Ensure the log directory exists
-LOG_DIR.mkdir(exist_ok=True)
+LOG_FILE: str = f"{datetime.today().strftime('%Y-%m-%d')}.log"
 
 # Create a global Logger
 logger: logging.Logger = logging.getLogger("iptv_spider")
@@ -49,6 +53,7 @@ console_handler: logging.StreamHandler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
 console_handler.setFormatter(formatter)
 
-# Add handlers to the Logger
-logger.addHandler(file_handler)
-logger.addHandler(console_handler)
+# Add handlers to the Logger only once
+if not logger.handlers:
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)

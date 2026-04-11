@@ -1,0 +1,44 @@
+services:
+  iptv-spider:
+    build:
+      context: .
+    image: iptv-spider:local
+    env_file:
+      - .env
+    volumes:
+      - ${HOST_INPUT_DIR:-./input}:/data/input
+      - ${HOST_OUTPUT_DIR:-./output}:/data/output
+      - ${HOST_CACHE_DIR:-./cache}:/data/cache
+      - ${HOST_LOG_DIR:-./logs}:/data/logs
+    working_dir: /app
+    entrypoint:
+      - sh
+      - -ec
+      - |
+        set -- iptv-spider \
+          --url_or_path "${URL_OR_PATH:-https://live.iptv365.org/live.m3u}" \
+          --filter "${FILTER:-\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b}" \
+          --output_dir "${OUTPUT_DIR:-/data/output}" \
+          --speed_threshold_mb "${SPEED_THRESHOLD_MB:-0.3}" \
+          --speed_limit_mb "${SPEED_LIMIT_MB:-2}" \
+          --max_retries "${MAX_RETRIES:-3}" \
+          --request_timeout "${REQUEST_TIMEOUT:-30}" \
+          --probe_timeout "${PROBE_TIMEOUT:-10}" \
+          --epg_url "${EPG_URL:-http://epg.51zmt.top:8000/e.xml}" \
+          --dedup_mode "${DEDUP_MODE:-url_fingerprint}" \
+          --dedup_keep "${DEDUP_KEEP:-first}" \
+          --cache_ttl_hours "${CACHE_TTL_HOURS:-24}" \
+          --cache_file "${CACHE_FILE:-/data/cache/tested_channels.json}"
+        if [ "${CACHE_ENABLED:-true}" = "true" ]; then
+          set -- "$@" --cache_enabled
+        else
+          set -- "$@" --no-cache_enabled
+        fi
+        if [ "${OUTPUT_WITH_EPG:-false}" = "true" ]; then
+          set -- "$@" --output_with_epg
+        fi
+        if [ "${CACHE_CLEAR:-false}" = "true" ]; then
+          set -- "$@" --cache_clear
+        fi
+        exec "$@"
+    restart: "no"

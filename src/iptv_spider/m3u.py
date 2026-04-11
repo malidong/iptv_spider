@@ -52,6 +52,7 @@ class M3U8:
         "tested_channels",
         "max_retries",
         "request_timeout",
+        "probe_timeout",
         "dedup_mode",
         "dedup_keep",
         "cache_enabled",
@@ -66,6 +67,7 @@ class M3U8:
         regex_filter: str,
         max_retries: int = 3,
         request_timeout: int = 30,
+        probe_timeout: int = 10,
         dedup_mode: str = "url_fingerprint",
         dedup_keep: str = "first",
         cache_enabled: bool = True,
@@ -84,6 +86,7 @@ class M3U8:
         """
         self.max_retries: int = max_retries
         self.request_timeout: int = request_timeout
+        self.probe_timeout: int = probe_timeout
 
         if path.startswith("http"):
             path: str = self.download_m3u8_file(
@@ -377,6 +380,7 @@ class M3U8:
                             media_url=media_url,
                             max_retries=self.max_retries,
                             request_timeout=self.request_timeout,
+                            probe_timeout=self.probe_timeout,
                         )
 
                         # Add the channel to the dictionary
@@ -460,6 +464,7 @@ class M3U8:
                         if cached_time and now - cached_time <= timedelta(hours=self.cache_ttl_hours):
                             channel.speed = cached.get("speed", channel.speed)
                             channel.resolution = cached.get("resolution", channel.resolution)
+                            channel.fps = float(cached.get("fps", channel.fps))
                             if channel_name not in best_channels:
                                 best_channels[channel_name] = channel
                             elif channel.speed > best_channels[channel_name].speed:
@@ -511,6 +516,7 @@ class M3U8:
                     self.tested_channels[fingerprint] = {
                         "speed": speed,
                         "resolution": result_channel.resolution,
+                        "fps": result_channel.fps,
                         "last_tested": utc_now_iso(),
                         "media_url": result_channel.media_url,
                         "channel_name": result_channel.channel_name,

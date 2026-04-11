@@ -11,10 +11,17 @@ and outputs the best-performing channels to both a JSON file and an M3U file.
 import os
 from datetime import datetime
 import json
+from numbers import Number
 
-from iptv_spider.m3u import M3U8
 from iptv_spider.logger import logger
-from iptv_spider.utils import arg_parser, load_config
+from iptv_spider.m3u import M3U8
+from iptv_spider.utils import build_effective_runtime_config, sanitize_runtime_config
+
+
+def _safe_fps(value: object, default: float = -1.0) -> float:
+    if isinstance(value, Number):
+        return float(value)
+    return default
 
 
 def main(
@@ -33,6 +40,7 @@ def main(
     cache_ttl_hours: int = 24,
     cache_file: str = "",
     cache_clear: bool = False,
+    probe_timeout: int | None = None,
 ) -> dict:
     """
     Main function to process an IPTV playlist.
@@ -67,6 +75,7 @@ def main(
         regex_filter=regex_filter,
         max_retries=max_retries,
         request_timeout=request_timeout,
+        probe_timeout=probe_timeout or 10,
         dedup_mode=dedup_mode,
         dedup_keep=dedup_keep,
         cache_enabled=cache_enabled,
@@ -86,13 +95,33 @@ def main(
     for channel_name, channel in best_channels_dict.items():
         if channel.speed > speed_threshold_bytes:
             valid_channels += 1
+            metadata = {
+                "resolution": getattr(channel, "resolution", "Unknown"),
+                "fps": _safe_fps(getattr(channel, "fps", -1.0)),
+            }
+            probe_metadata = None
+            probe_fn = getattr(channel, "get_ffprobe_metadata", None)
+            if callable(probe_fn):
+                try:
+                    probe_metadata = probe_fn()
+                except Exception:
+                    probe_metadata = None
+            if isinstance(probe_metadata, dict):
+                metadata["resolution"] = probe_metadata.get("resolution", metadata["resolution"])
+                metadata["fps"] = _safe_fps(probe_metadata.get("fps"), metadata["fps"])
+
             best_channels[channel_name] = {
                 "name": channel.channel_name,
                 "meta": channel.meta,
                 "media_url": channel.media_url,
                 "speed": channel.speed,
                 "speed_mbps": round(channel.speed / (1024 * 1024), 2),
-                "resolution": channel.resolution
+                "resolution": metadata["resolution"],
+                "fps": metadata["fps"],
+                "video_metadata": {
+                    "resolution": metadata["resolution"],
+                    "fps": metadata["fps"],
+                },
             }
 
     # Save filtered channels to a JSON file
@@ -126,17 +155,16 @@ def main(
     return stats
 
 
-def entrypoint() -> None:
+def entrypoint(argv: list[str] | None = None) -> None:
     """
     Entry point for the IPTV Spider program.
     """
-    # Parse command-line arguments
-    args = arg_parser()
-    config = load_config()
-    config.update(args.__dict__)
+    # Parse command-line arguments and merge with environment defaults.
+    config = build_effective_runtime_config(argv=argv)
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")
+    logger.info("Runtime config: %s", sanitize_runtime_config(config))
     stats = main(
         m3u_url=str(config.get("url_or_path", "https://live.iptv365.org/live.m3u")),
         regex_filter=str(config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")),
@@ -153,6 +181,7 @@ def entrypoint() -> None:
         cache_ttl_hours=int(config.get("cache_ttl_hours", 24)),
         cache_file=str(config.get("cache_file", "")),
         cache_clear=bool(config.get("cache_clear", False)),
+        probe_timeout=config.get("probe_timeout"),
     )
 
     # Log statistics

@@ -16,12 +16,13 @@ http://39.165.196.149:9003//hls/2/index.m3u8
 """
 
 from math import floor, ceil
+import json
 from urllib.parse import urljoin
 import subprocess
 import time
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Optional
+from typing import Optional, Any
 import requests
 import m3u8
 
@@ -49,9 +50,29 @@ class Channel:
         max_retries (int): Maximum number of retry attempts for network requests.
         request_timeout (int): Timeout in seconds for HTTP requests.
     """
-    __slots__ = ("meta", "channel_name", "media_url", "is_direct", "speed", "resolution", "max_retries", "request_timeout")
+    __slots__ = (
+        "meta",
+        "channel_name",
+        "media_url",
+        "is_direct",
+        "speed",
+        "resolution",
+        "fps",
+        "max_retries",
+        "request_timeout",
+        "probe_timeout",
+        "_ffprobe_metadata",
+    )
 
-    def __init__(self, meta: str, channel_name: str, media_url: str, max_retries: int = 3, request_timeout: int = 30):
+    def __init__(
+        self,
+        meta: str,
+        channel_name: str,
+        media_url: str,
+        max_retries: int = 3,
+        request_timeout: int = 30,
+        probe_timeout: int = 10,
+    ):
         """
         Initializes a Channel object.
 
@@ -68,8 +89,98 @@ class Channel:
         self.is_direct: bool = media_url.endswith("m3u") or media_url.endswith("m3u8")
         self.speed: float = -1
         self.resolution: str = "Unknown"
+        self.fps: float = -1.0
         self.max_retries: int = max_retries
         self.request_timeout: int = request_timeout
+        self.probe_timeout: int = probe_timeout
+        self._ffprobe_metadata: dict[str, Any] = {}
+
+    @staticmethod
+    def _parse_ffprobe_rate(rate_value: Any) -> float:
+        """
+        Convert an ffprobe rate value into a float FPS estimate.
+        """
+        try:
+            if rate_value in (None, "", "N/A"):
+                return -1.0
+            if isinstance(rate_value, (int, float)):
+                return float(rate_value)
+            if isinstance(rate_value, str):
+                if "/" in rate_value:
+                    numerator, denominator = rate_value.split("/", 1)
+                    denominator_value = float(denominator)
+                    if denominator_value == 0:
+                        return -1.0
+                    return float(numerator) / denominator_value
+                return float(rate_value)
+        except Exception:
+            return -1.0
+        return -1.0
+
+    def get_ffprobe_metadata(self, ts_url: Optional[str] = None) -> dict[str, Any]:
+        """
+        Extract video metadata using ffprobe.
+
+        Returns safe defaults when ffprobe is unavailable or the stream cannot be probed.
+        Results are cached on the channel instance to avoid repeated subprocess calls.
+        """
+        if self._ffprobe_metadata:
+            return self._ffprobe_metadata
+
+        probe_url = ts_url or self.media_url
+        metadata: dict[str, Any] = {
+            "resolution": "Unknown",
+            "fps": -1.0,
+        }
+
+        try:
+            command = [
+                "ffprobe",
+                "-v", "error",
+                "-select_streams", "v:0",
+                "-show_entries", "stream=width,height,avg_frame_rate,r_frame_rate",
+                "-of", "json",
+                probe_url,
+            ]
+            result: subprocess.CompletedProcess = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                timeout=self.probe_timeout,
+                check=False,
+            )
+            if result.returncode != 0:
+                logger.warning(
+                    f"ffprobe returned non-zero exit status for {self.channel_name}: {result.stderr.strip() if result.stderr else 'unknown error'}"
+                )
+            else:
+                payload = json.loads(result.stdout or "{}")
+                streams = payload.get("streams") or []
+                stream = streams[0] if streams else {}
+                width = stream.get("width")
+                height = stream.get("height")
+                if isinstance(width, int) and isinstance(height, int) and width > 0 and height > 0:
+                    metadata["resolution"] = f"{width}x{height}"
+                fps = self._parse_ffprobe_rate(stream.get("avg_frame_rate"))
+                if fps < 0:
+                    fps = self._parse_ffprobe_rate(stream.get("r_frame_rate"))
+                if fps >= 0:
+                    metadata["fps"] = fps
+        except subprocess.TimeoutExpired:
+            logger.warning(
+                f"Timed out while probing metadata for {self.channel_name} - {probe_url}"
+            )
+        except FileNotFoundError:
+            logger.warning("ffprobe executable was not found; video metadata will be unavailable")
+        except json.JSONDecodeError:
+            logger.warning(f"Invalid ffprobe output for {self.channel_name}: {probe_url}")
+        except Exception as e:
+            logger.warning(f"Exception while probing metadata for {self.channel_name}: {str(e)}")
+
+        self._ffprobe_metadata = metadata
+        self.resolution = metadata["resolution"]
+        self.fps = metadata["fps"]
+        return self._ffprobe_metadata
 
     def get_speed(self) -> float:
         """
@@ -98,30 +209,8 @@ class Channel:
         Returns:
             str: Video resolution (e.g., '1920x1080') or error message.
         """
-        try:
-            command = [
-                "ffprobe",
-                "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=width,height",
-                "-of", "csv=p=0",
-                ts_url
-            ]
-            result: subprocess.CompletedProcess = subprocess.run(command,
-                                                                 capture_output=True,
-                                                                 text=True,
-                                                                 timeout=10,
-                                                                 check=False)
-            if result.returncode == 0:
-                resolution = result.stdout.strip()
-                return resolution if resolution else "Unknown"
-
-            return "Failed to get resolution"
-        except subprocess.TimeoutExpired:
-            logger.warning(f"Timed out while getting video resolution - {ts_url}")
-        except Exception as e:
-            logger.warning(f"Exception while getting video resolution: {str(e)}")
-        return "Unknown resolution"
+        metadata = self.get_ffprobe_metadata(ts_url=ts_url)
+        return metadata.get("resolution", "Unknown")
 
     def __test_m3u8_bandwidth(self, max_ts: int = 5, max_workers: int = 2) -> float:
         """
@@ -156,7 +245,7 @@ class Channel:
                         logger.warning(f"Error testing TS download speed: {e}")
                         continue
 
-            self.resolution = self.get_video_resolution(ts_url=ts_urls[0])
+            self.get_ffprobe_metadata(ts_url=ts_urls[0])
             return max(results) if results else 0.0
         except requests.exceptions.RequestException as e:
             logger.warning(f"RequestException during M3U8 speed test for {self.channel_name}: {e}")
@@ -248,7 +337,7 @@ class Channel:
                     response.close()
 
                 elapsed_time = time.time() - start_time
-                self.resolution = self.get_video_resolution(ts_url=self.media_url)
+                self.get_ffprobe_metadata(ts_url=self.media_url)
                 if elapsed_time > 0:
                     speed = total_size / elapsed_time
                     logger.info(f"Download speed: {speed / (1024 * 1024):.2f} MB/s")

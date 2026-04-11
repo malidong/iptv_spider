@@ -71,6 +71,30 @@ iptv-spider --output_with_epg --epg_url "http://epg.51zmt.top:8000/e.xml"
 iptv-spider --dedup_mode url_fingerprint --dedup_keep first --cache_enabled --cache_ttl_hours 24
 ```
 
+### 3️⃣ Run With Docker Compose
+
+```bash
+# 1) Prepare env file
+cp .env.example .env
+
+# 2) (Optional) edit .env for your source/filter/output paths
+
+# 3) Build and run
+docker compose up --build
+```
+
+Default mount points:
+- `./input -> /data/input`
+- `./output -> /data/output`
+- `./cache -> /data/cache`
+- `./logs -> /data/logs`
+
+You can change host paths with:
+- `HOST_INPUT_DIR`
+- `HOST_OUTPUT_DIR`
+- `HOST_CACHE_DIR`
+- `HOST_LOG_DIR`
+
 ---
 
 ## 📋 Parameters
