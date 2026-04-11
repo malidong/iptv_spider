@@ -26,5 +26,7 @@ jobs:
 
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         with:
-          model: opencode/gpt-5-nano
+          model: opencode/minimax-m2.5-free

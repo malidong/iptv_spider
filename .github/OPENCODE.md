@@ -33,37 +33,57 @@
 
 ### 配置
 
-当前配置使用 OpenCode Zen 的 `gpt-5-nano` 免费模型。
+当前配置使用 OpenCode Zen 的 `minimax-m2.5-free` 免费模型。
 
-#### 选项
+#### 必需配置
 
-**方案 1：使用 OpenCode Zen（推荐）**
-- 前往 [OpenCode Zen](https://opencode.ai/auth) 注册账户（免费）
-- 无需信用卡，即可使用多个免费模型
-- 可选模型：
-  - `opencode/gpt-5-nano` — 完全免费，性能好
-  - `opencode/minimax-m2.5-free` — 完全免费，适合编码
-  - `opencode/big-pickle` — 完全免费，隐秘模型
+**GitHub Secrets 配置** （必需）
+在仓库设置中添加以下 Secret：
 
-**方案 2：使用自己的 API Key**
-- 如果要使用其他提供商（OpenAI、Anthropic 等），在 GitHub Secrets 中配置：
-  - `OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
-- 更新 workflow 文件中的 `env` 部分
+1. 进入仓库 Settings → Secrets and variables → Actions
+2. 点击 "New repository secret"
+3. 添加以下变量：
+
+| Secret 名称 | 说明 | 获取方式 |
+|-----------|------|--------|
+| `OPENCODE_ZEN_API_KEY` | OpenCode Zen API Key | https://opencode.ai/auth 注册后复制 |
+
+**获取 API Key 步骤：**
+1. 前往 [OpenCode Zen](https://opencode.ai/auth) 注册账户（免费）
+2. 登录后在设置中复制 API Key
+3. 无需信用卡或付款
+4. 在 GitHub 中配置为 `OPENCODE_ZEN_API_KEY` Secret
+
+#### 可选：更换模型
+
+如果要使用其他模型，修改 workflow 文件中的 `model` 字段：
+
+- `opencode/minimax-m2.5-free` — **当前** ⭐ 完全免费，适合编码
+- `opencode/gpt-5-nano` — 完全免费，轻量级
+- `opencode/big-pickle` — 完全免费，隐秘模型
+- `opencode/qwen3.6-plus-free` — 完全免费，高性能
+
+#### 可选：使用自己的 API Key
+
+如果要使用其他提供商（OpenAI、Anthropic 等）：
+1. 在 GitHub Secrets 中添加 `OPENAI_API_KEY` 或 `ANTHROPIC_API_KEY`
+2. 更新 workflow 文件中的 `env` 部分
+3. 修改 `model` 字段为对应提供商的模型
 
 ### 成本
 
-- **Zen 免费模型** ($0/月)：完全免费，无需付款
+- **Zen 免费模型** ($0/月)：完全免费，只需注册 OpenCode Zen 账户
 - **付费 Zen 模型** (可选)：按使用量计费，起价 $0.02 - $30 每百万 token
 - **其他提供商**：取决于具体提供商
 
 ### 模型推荐
 
-| 模型 | 成本 | 特点 | 适用场景 |
+| 模型 | 成本 | 特点 | 当前使用 |
 |------|------|------|---------|
-| `gpt-5-nano` | 免费 | 轻量级，快速 | 快速分析、评论 |
-| `minimax-m2.5-free` | 免费 | 平衡性能 | 一般分析和审查 |
-| `big-pickle` | 免费 | 实验性 | 测试和反馈 |
-| `qwen3.6-plus-free` | 免费 | 高性能 | 复杂分析 |
+| `minimax-m2.5-free` | 免费 | 平衡性能，最适合编码 | ⭐ **是** |
+| `gpt-5-nano` | 免费 | 轻量级，快速 | 否 |
+| `big-pickle` | 免费 | 实验性 | 否 |
+| `qwen3.6-plus-free` | 免费 | 高性能 | 否 |
 
 ### 故障排除
 
