@@ -7,6 +7,12 @@
 
 - Fixes #<issue-number>
 
+## PR Type
+
+- [ ] Feature (use `?template=feature.md`)
+- [ ] Bugfix (use `?template=bugfix.md`)
+- [ ] Release (use `?template=release.md`)
+
 ## Branch Checklist
 
 - [ ] Branch is created from `dev` (except `hotfix/*` from `main`)
@@ -23,4 +29,3 @@
 
 - Risk level:
 - Rollback plan:
-

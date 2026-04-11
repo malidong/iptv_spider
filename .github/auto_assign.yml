@@ -1,0 +1,13 @@
+addReviewers: true
+reviewers:
+  - malidong
+numberOfReviewers: 1
+
+addAssignees: true
+assignees:
+  - author
+
+skipKeywords:
+  - wip
+  - draft
+
