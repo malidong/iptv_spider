@@ -1,0 +1,50 @@
+name: OpenCode PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  review:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
+      issues: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode PR Review
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+        with:
+          model: opencode/minimax-m2.5-free
+          prompt: |
+            Review this pull request systematically:
+            
+            1. **Code Quality**: Check for code quality issues, style consistency, and best practices
+            2. **Testing**: Verify that tests are adequate and cover edge cases
+            3. **Documentation**: Check if documentation is updated appropriately
+            4. **Performance**: Look for potential performance issues or bottlenecks
+            5. **Security**: Identify any security vulnerabilities or concerns
+            6. **Compatibility**: Check for backward compatibility issues
+            7. **Known Issues**: Reference any existing patterns and conventions from this codebase
+            
+            ## MERGE VERDICT (CRITICAL - Include this at the end)
+            
+            Based on the above review, provide a final verdict:
+            
+            If the PR is ready to merge (all checks pass, no critical issues):
+            **✅ APPROVED FOR MERGE** - This PR is ready to be merged.
+            
+            If blockers exist (critical bugs, security issues, missing tests, breaking changes):
+            **❌ CHANGES REQUESTED** - Please address: [list specific items]
+            
+            Be aware of this project's conventions and patterns.
+            For the verdict, be clear and concise - this helps automated systems make merge decisions.

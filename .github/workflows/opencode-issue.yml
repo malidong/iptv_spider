@@ -1,0 +1,38 @@
+name: OpenCode Issue Analysis
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  analyze_issue:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Run OpenCode Issue Analysis
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+        with:
+          model: opencode/minimax-m2.5-free
+          prompt: |
+            Analyze this issue and provide implementation guidance:
+            
+            1. **Problem Summary**: Briefly explain what the issue is about
+            2. **Root Causes**: Identify potential root causes
+            3. **Implementation Approach**: Suggest a high-level implementation plan
+            4. **Relevant Code Files**: List files that might need changes
+            5. **Potential Risks**: Highlight any risks or edge cases to consider
+            6. **Recommendations**: Provide concrete next steps
+            
+            If this is a bug report, include reproduction steps and debugging suggestions.
+            If this is a feature request, outline the scope and design considerations.

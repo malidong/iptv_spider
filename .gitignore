@@ -149,6 +149,12 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# Project-specific temp files
+tmpofqwvuoi/
+tmp*/
+_*_test_output/
+.claude/
+
 # pytype static type analyzer
 .pytype/
 

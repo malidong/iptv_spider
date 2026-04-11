@@ -1,0 +1,20 @@
+name: Auto Assign
+
+on:
+  pull_request_target:
+    types: [opened, ready_for_review]
+
+permissions:
+  pull-requests: write
+  contents: read
+
+jobs:
+  add-assignees-and-reviewers:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    steps:
+      - name: Auto assign assignees and reviewers
+        uses: kentaro-m/auto-assign-action@v2.0.0
+        with:
+          configuration-path: .github/auto_assign.yml
+
