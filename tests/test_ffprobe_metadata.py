@@ -4,7 +4,6 @@ Focused tests for ffprobe metadata extraction and export wiring.
 """
 
 import json
-import tempfile
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import MagicMock, patch

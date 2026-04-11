@@ -6,6 +6,10 @@ include setup.ps1
 include setup.bat
 include setup.sh
 include uv.lock
+include .env.example
+include Dockerfile
+include docker-compose.yml
+include .dockerignore
 recursive-include .github/workflows *.yml
 recursive-include src *.py
 recursive-include tests *.py
