@@ -1,0 +1,45 @@
+name: PR Guard
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  enforce-branch-flow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate Branch Strategy
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -euo pipefail
+
+          echo "Base branch: ${BASE_REF}"
+          echo "Head branch: ${HEAD_REF}"
+
+          if [[ "${BASE_REF}" == "dev" ]]; then
+            if [[ ! "${HEAD_REF}" =~ ^(feat|fix|chore|refactor|docs|test)/[0-9]+-[a-z0-9._-]+$ ]]; then
+              echo "PRs to dev must come from feat|fix|chore|refactor|docs|test branches with issue number."
+              exit 1
+            fi
+            if [[ ! "${PR_BODY}" =~ (Fixes|Closes|Refs)[[:space:]]+#[0-9]+ ]]; then
+              echo "PR body must reference an issue, e.g. 'Fixes #123'."
+              exit 1
+            fi
+          elif [[ "${BASE_REF}" == "main" ]]; then
+            if [[ ! "${HEAD_REF}" =~ ^(release|hotfix)/[0-9]+\.[0-9]+\.[0-9]+([.-](rc|beta|alpha)[0-9]*)?$ ]]; then
+              echo "PRs to main must come from release/* or hotfix/* branches."
+              exit 1
+            fi
+          else
+            echo "Target branch must be dev or main."
+            exit 1
+          fi
+
+          if [[ "${HEAD_REF}" == "dev" || "${HEAD_REF}" == "main" ]]; then
+            echo "Direct PR from protected branches is not allowed."
+            exit 1
+          fi
+
