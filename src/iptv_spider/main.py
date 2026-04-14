@@ -107,7 +107,9 @@ def main(
                 except Exception:
                     probe_metadata = None
             if isinstance(probe_metadata, dict):
-                metadata["resolution"] = probe_metadata.get("resolution", metadata["resolution"])
+                metadata["resolution"] = probe_metadata.get(
+                    "resolution", metadata["resolution"]
+                )
                 metadata["fps"] = _safe_fps(probe_metadata.get("fps"), metadata["fps"])
 
             best_channels[channel_name] = {
@@ -125,14 +127,16 @@ def main(
             }
 
     # Save filtered channels to a JSON file
-    json_filename = os.path.join(output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json")
-    with open(json_filename, 'w', encoding='utf-8') as json_file:
+    json_filename = os.path.join(
+        output_dir, f"best_channels_{datetime.today().strftime('%Y-%m-%d')}.json"
+    )
+    with open(json_filename, "w", encoding="utf-8") as json_file:
         json.dump(best_channels, json_file, indent=4, ensure_ascii=False)
     logger.info(f"Filtered channel details saved to: {json_filename}")
 
     # Save results to an M3U file
-    m3u_filename = os.path.join(output_dir, 'best_channels.m3u')
-    with open(m3u_filename, 'w', encoding='utf-8') as m3u_file:
+    m3u_filename = os.path.join(output_dir, "best_channels.m3u")
+    with open(m3u_filename, "w", encoding="utf-8") as m3u_file:
         m3u_file.write(
             f'#EXTM3U url-tvg="{epg_url}"\n'
             if (output_with_epg and epg_url)
@@ -144,12 +148,15 @@ def main(
     logger.info(f"Filtered M3U playlist saved to: {m3u_filename}")
 
     # Calculate and return statistics
+    dedup_count = len(m3u8.dedup_trace) if hasattr(m3u8, "dedup_trace") else 0
     stats = {
         "total_channels_filtered": len(m3u8.channels),
         "best_channels_tested": len(best_channels_dict),
         "valid_channels_output": valid_channels,
         "speed_threshold_mb": speed_threshold_mb,
-        "output_files": [json_filename, m3u_filename]
+        "deduplicated_count": dedup_count,
+        "dedup_trace": m3u8.dedup_trace if hasattr(m3u8, "dedup_trace") else [],
+        "output_files": [json_filename, m3u_filename],
     }
 
     return stats
@@ -167,7 +174,9 @@ def entrypoint(argv: list[str] | None = None) -> None:
     logger.info("Runtime config: %s", sanitize_runtime_config(config))
     stats = main(
         m3u_url=str(config.get("url_or_path", "https://live.iptv365.org/live.m3u")),
-        regex_filter=str(config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")),
+        regex_filter=str(
+            config.get("filter", r"\b(cctv|CCTV)-?(?:[1-9]|1[0-7]|5\+?)\b")
+        ),
         output_dir=str(config.get("output_dir", ".")),
         speed_threshold_mb=config.get("speed_threshold_mb", 0.3),
         speed_limit_mb=config.get("speed_limit_mb", 2),
