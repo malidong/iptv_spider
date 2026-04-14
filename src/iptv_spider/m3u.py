@@ -59,6 +59,7 @@ class M3U8:
         "cache_ttl_hours",
         "cache_file",
         "cache_clear",
+        "dedup_trace",
     )
 
     def __init__(
@@ -100,15 +101,23 @@ class M3U8:
             path=Path(cache_file) if cache_file else None
         )
         self.dedup_mode: str = dedup_mode
+        if dedup_keep not in ("first", "fastest"):
+            raise ValueError(
+                f"Invalid dedup_keep value: '{dedup_keep}'. "
+                "Must be 'first' or 'fastest'."
+            )
         self.dedup_keep: str = dedup_keep
         self.cache_enabled: bool = cache_enabled
         self.cache_ttl_hours: int = cache_ttl_hours
         self.cache_file: Optional[str] = cache_file
         self.cache_clear: bool = cache_clear
+        self.dedup_trace: list[dict] = []
 
         if self.cache_clear:
             self.tested_channels = {}
-            self.__save_tested_channels(path=Path(self.cache_file) if self.cache_file else None)
+            self.__save_tested_channels(
+                path=Path(self.cache_file) if self.cache_file else None
+            )
 
         if self.dedup_mode == "url_fingerprint":
             self.__dedup_channels_by_fingerprint()
@@ -197,7 +206,9 @@ class M3U8:
         Returns:
             dict: Dictionary mapping URL fingerprints to test metadata.
         """
-        tested_channels_path = path if path else get_config_dir() / "tested_channels.json"
+        tested_channels_path = (
+            path if path else get_config_dir() / "tested_channels.json"
+        )
         try:
             if tested_channels_path.is_file():
                 with open(tested_channels_path, "r", encoding="utf-8") as f:
@@ -213,7 +224,9 @@ class M3U8:
         Args:
             path (Path): The file path to save the cache.
         """
-        tested_channels_path = path if path else get_config_dir() / "tested_channels.json"
+        tested_channels_path = (
+            path if path else get_config_dir() / "tested_channels.json"
+        )
         try:
             tested_channels_path.parent.mkdir(parents=True, exist_ok=True)
             with open(tested_channels_path, "w", encoding="utf-8") as f:
@@ -275,14 +288,39 @@ class M3U8:
                         best_speed[fp] = float(cached_speed)
                     continue
 
+                reason = "duplicate_url"
                 if self.dedup_keep == "fastest":
                     cached_speed = self.tested_channels.get(fp, {}).get("speed")
                     if cached_speed is None:
+                        self.dedup_trace.append(
+                            {
+                                "channel_name": channel.channel_name,
+                                "media_url": channel.media_url,
+                                "fingerprint": fp,
+                                "action": "skip",
+                                "reason": "no_cached_speed",
+                            }
+                        )
                         continue
                     cached_speed = float(cached_speed)
                     if fp not in best_speed or cached_speed > best_speed[fp]:
                         best_speed[fp] = cached_speed
                         seen[fp] = channel
+                        reason = "keep_faster"
+                    else:
+                        reason = "skip_slower"
+                else:
+                    reason = "skip_first_kept"
+
+                self.dedup_trace.append(
+                    {
+                        "channel_name": channel.channel_name,
+                        "media_url": channel.media_url,
+                        "fingerprint": fp,
+                        "action": "deduplicated",
+                        "reason": reason,
+                    }
+                )
             deduped[channel_name] = list(seen.values())
         self.channels = deduped
 
@@ -461,15 +499,22 @@ class M3U8:
                     last_tested = cached.get("last_tested")
                     if last_tested:
                         cached_time = self.__parse_cache_time(last_tested)
-                        if cached_time and now - cached_time <= timedelta(hours=self.cache_ttl_hours):
+                        if cached_time and now - cached_time <= timedelta(
+                            hours=self.cache_ttl_hours
+                        ):
                             channel.speed = cached.get("speed", channel.speed)
-                            channel.resolution = cached.get("resolution", channel.resolution)
+                            channel.resolution = cached.get(
+                                "resolution", channel.resolution
+                            )
                             channel.fps = float(cached.get("fps", channel.fps))
                             if channel_name not in best_channels:
                                 best_channels[channel_name] = channel
                             elif channel.speed > best_channels[channel_name].speed:
                                 best_channels[channel_name] = channel
-                            if server not in self.tested_servers or channel.speed > self.tested_servers[server]:
+                            if (
+                                server not in self.tested_servers
+                                or channel.speed > self.tested_servers[server]
+                            ):
                                 self.tested_servers[server] = channel.speed
                             continue
 
@@ -509,7 +554,10 @@ class M3U8:
                         best_channels[result_ch_name] = result_channel
 
                     # Update tested server speed
-                    if server not in self.tested_servers or speed > self.tested_servers[server]:
+                    if (
+                        server not in self.tested_servers
+                        or speed > self.tested_servers[server]
+                    ):
                         self.tested_servers[server] = speed
                     # Update tested channel cache
                     fingerprint = url_fingerprint(result_channel.media_url)
@@ -540,7 +588,9 @@ class M3U8:
         self.__save_black_servers()
         self.__save_tested_servers()
         if self.cache_enabled:
-            self.__save_tested_channels(path=Path(self.cache_file) if self.cache_file else None)
+            self.__save_tested_channels(
+                path=Path(self.cache_file) if self.cache_file else None
+            )
 
         logger.info(
             f"Testing completed. Best channels: {len(best_channels)}, Blacklisted servers: {len(self.black_servers)}"

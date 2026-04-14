@@ -157,6 +157,46 @@ http://example.com/cctv1.m3u8?a=1&b=2
             self.assertEqual(len(m3u8.channels["CCTV-1"]), 1)
         finally:
             import os
+
+            if os.path.exists(temp_m3u.name):
+                os.unlink(temp_m3u.name)
+
+    def test_m3u8_dedup_trace(self):
+        """Test that dedup_trace is populated with deduplication reasons."""
+        content = """#EXTM3U
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8
+#EXTINF:-1 tvg-name="CCTV1",CCTV-1
+http://example.com/cctv1.m3u8?a=1&b=2
+#EXTINF:-1 tvg-name="CCTV2",CCTV-2
+http://example.com/cctv2.m3u8
+"""
+        temp_m3u = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".m3u", delete=False, encoding="utf-8"
+        )
+        temp_m3u.write(content)
+        temp_m3u.close()
+        try:
+            m3u8 = M3U8(
+                path=temp_m3u.name,
+                regex_filter=r".*",
+                max_retries=1,
+                request_timeout=10,
+                dedup_mode="url_fingerprint",
+            )
+            self.assertIsInstance(m3u8.dedup_trace, list)
+            self.assertGreater(len(m3u8.dedup_trace), 0)
+            for entry in m3u8.dedup_trace:
+                self.assertIn("channel_name", entry)
+                self.assertIn("media_url", entry)
+                self.assertIn("fingerprint", entry)
+                self.assertIn("action", entry)
+                self.assertIn("reason", entry)
+        finally:
+            import os
+
             if os.path.exists(temp_m3u.name):
                 os.unlink(temp_m3u.name)
 
@@ -195,13 +235,16 @@ http://example.com/cctv1.m3u8
                     cache_ttl_hours=24,
                     cache_file=str(cache_file),
                 )
-                with patch("src.iptv_spider.channel.Channel.get_speed") as mock_get_speed:
+                with patch(
+                    "src.iptv_spider.channel.Channel.get_speed"
+                ) as mock_get_speed:
                     best = m3u8.get_best_channels()
                     mock_get_speed.assert_not_called()
                 self.assertIn("CCTV-1", best)
                 self.assertEqual(best["CCTV-1"].speed, 123456.0)
             finally:
                 import os
+
                 if os.path.exists(temp_m3u.name):
                     os.unlink(temp_m3u.name)
 
@@ -220,7 +263,9 @@ http://example.com/cctv1.m3u8
             cache_file = Path(tmpdir) / "tested_channels.json"
             fp = url_fingerprint("http://example.com/cctv1.m3u8")
             with open(cache_file, "w", encoding="utf-8") as f:
-                json.dump({fp: {"speed": 1, "last_tested": "2099-01-01T00:00:00+00:00"}}, f)
+                json.dump(
+                    {fp: {"speed": 1, "last_tested": "2099-01-01T00:00:00+00:00"}}, f
+                )
             try:
                 m3u8 = M3U8(
                     path=temp_m3u.name,
@@ -237,6 +282,7 @@ http://example.com/cctv1.m3u8
                 self.assertEqual(saved, {})
             finally:
                 import os
+
                 if os.path.exists(temp_m3u.name):
                     os.unlink(temp_m3u.name)
 
@@ -328,6 +374,7 @@ http://example.com/cctv2.m3u8
         mock_instance = MagicMock()
         mock_instance.channels = {"CCTV-1": [], "CCTV-2": []}
         mock_instance.get_best_channels.return_value = {}
+        mock_instance.dedup_trace = []
         mock_m3u8.return_value = mock_instance
 
         stats = main(
@@ -345,6 +392,8 @@ http://example.com/cctv2.m3u8
         self.assertIn("best_channels_tested", stats)
         self.assertIn("valid_channels_output", stats)
         self.assertIn("speed_threshold_mb", stats)
+        self.assertIn("deduplicated_count", stats)
+        self.assertIn("dedup_trace", stats)
         self.assertIn("output_files", stats)
 
     @patch("src.iptv_spider.main.M3U8")
@@ -353,7 +402,7 @@ http://example.com/cctv2.m3u8
         mock_instance = MagicMock()
         channel = MagicMock()
         channel.channel_name = "CCTV-1"
-        channel.meta = "#EXTINF:-1 tvg-name=\"CCTV1\""
+        channel.meta = '#EXTINF:-1 tvg-name="CCTV1"'
         channel.media_url = "http://example.com/cctv1.m3u8"
         channel.speed = 1000000
         channel.resolution = "1920x1080"
@@ -380,9 +429,30 @@ http://example.com/cctv2.m3u8
             self.assertEqual(first_line, '#EXTM3U url-tvg="http://example.com/epg.xml"')
         finally:
             import shutil
+
             if Path(output_dir).exists():
                 shutil.rmtree(output_dir)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDedupKeepValidation(unittest.TestCase):
+    """Test cases for dedup_keep parameter validation."""
+
+    def test_invalid_dedup_keep_raises_error(self):
+        """Test that invalid dedup_keep value raises ValueError."""
+        from src.iptv_spider.m3u import M3U8
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".m3u", delete=False) as f:
+            f.write("#EXTM3U\n#EXTINF:-1,Test\nhttp://example.com/test.m3u\n")
+            temp_file = f.name
+        try:
+            with self.assertRaises(ValueError) as context:
+                M3U8(path=temp_file, regex_filter=".*", dedup_keep="invalid")
+            self.assertIn("Invalid dedup_keep value", str(context.exception))
+            self.assertIn("first", str(context.exception))
+            self.assertIn("fastest", str(context.exception))
+        finally:
+            Path(temp_file).unlink()
