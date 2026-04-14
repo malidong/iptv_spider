@@ -13,3 +13,4 @@ include .dockerignore
 recursive-include .github/workflows *.yml
 recursive-include src *.py
 recursive-include tests *.py
+recursive-include scripts *.ps1 *.sh
