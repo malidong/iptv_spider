@@ -101,6 +101,11 @@ class M3U8:
             path=Path(cache_file) if cache_file else None
         )
         self.dedup_mode: str = dedup_mode
+        if dedup_keep not in ("first", "fastest"):
+            raise ValueError(
+                f"Invalid dedup_keep value: '{dedup_keep}'. "
+                "Must be 'first' or 'fastest'."
+            )
         self.dedup_keep: str = dedup_keep
         self.cache_enabled: bool = cache_enabled
         self.cache_ttl_hours: int = cache_ttl_hours

@@ -436,3 +436,23 @@ http://example.com/cctv2.m3u8
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestDedupKeepValidation(unittest.TestCase):
+    """Test cases for dedup_keep parameter validation."""
+
+    def test_invalid_dedup_keep_raises_error(self):
+        """Test that invalid dedup_keep value raises ValueError."""
+        from src.iptv_spider.m3u import M3U8
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".m3u", delete=False) as f:
+            f.write("#EXTM3U\n#EXTINF:-1,Test\nhttp://example.com/test.m3u\n")
+            temp_file = f.name
+        try:
+            with self.assertRaises(ValueError) as context:
+                M3U8(m3u_file=temp_file, dedup_keep="invalid")
+            self.assertIn("Invalid dedup_keep value", str(context.exception))
+            self.assertIn("first", str(context.exception))
+            self.assertIn("fastest", str(context.exception))
+        finally:
+            Path(temp_file).unlink()
