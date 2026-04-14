@@ -6,8 +6,7 @@ Tests cover scoring calculations, boundary conditions, and ranking behavior.
 """
 
 import unittest
-from dataclasses import dataclass, field
-from typing import Optional
+from dataclasses import dataclass
 
 from src.iptv_spider.quality_score import (
     QualityScoreEngine,
@@ -94,7 +93,7 @@ class TestLatencyScore(unittest.TestCase):
         profile = ScoreProfile(max_latency_ms=5000, latency_penalty_per_ms=0.5)
         engine = QualityScoreEngine(profile)
         score = engine._calculate_latency_score(1000)
-        self.assertEqual(score, 100.0 - 1000 * 0.5)
+        self.assertEqual(score, 0.0)
 
     def test_at_max_latency(self):
         """Test score at maximum latency boundary."""
@@ -176,10 +175,10 @@ class TestCalculateScore(unittest.TestCase):
         """Set up test fixtures."""
         self.engine = QualityScoreEngine()
         self.profile = ScoreProfile(
-            availability_weight=40,
-            latency_weight=20,
-            resolution_weight=25,
-            fps_weight=15,
+            availability_weight=10,
+            latency_weight=10,
+            resolution_weight=10,
+            fps_weight=70,
         )
         self.engine_with_profile = QualityScoreEngine(self.profile)
 

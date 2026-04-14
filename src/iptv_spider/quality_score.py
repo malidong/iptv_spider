@@ -18,7 +18,7 @@ Typical usage:
     ranked = engine.rank_channels([channel1, channel2])
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 import re
 
