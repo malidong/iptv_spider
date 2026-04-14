@@ -450,7 +450,7 @@ class TestDedupKeepValidation(unittest.TestCase):
             temp_file = f.name
         try:
             with self.assertRaises(ValueError) as context:
-                M3U8(m3u_file=temp_file, dedup_keep="invalid")
+                M3U8(path=temp_file, regex_filter=".*", dedup_keep="invalid")
             self.assertIn("Invalid dedup_keep value", str(context.exception))
             self.assertIn("first", str(context.exception))
             self.assertIn("fastest", str(context.exception))
