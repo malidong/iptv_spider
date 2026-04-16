@@ -10,9 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
       pull-requests: write
-      issues: read
+      issues: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -25,6 +25,7 @@ jobs:
           OPENCODE_ZEN_API_KEY: ${{ secrets.OPENCODE_ZEN_API_KEY }}
         with:
           model: opencode/minimax-m2.5-free
+          use_github_token: true
           prompt: |
             Review this pull request systematically:
             
