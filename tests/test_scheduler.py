@@ -7,7 +7,6 @@ from pathlib import Path
 import tempfile
 
 from iptv_spider.scheduler import (
-    CronSchedule,
     Scheduler,
     create_scheduler,
     LOCK_FILE,
@@ -95,25 +94,16 @@ class TestCreateScheduler(unittest.TestCase):
 
     def test_create_scheduler_with_cron(self):
         """Test create_scheduler with IPTV_CRON_SCHEDULE."""
+        old_val = os.environ.get("IPTV_CRON_SCHEDULE")
         os.environ["IPTV_CRON_SCHEDULE"] = "0 2 * * *"
-        sched = create_scheduler()
-        self.assertEqual(sched.cron_expression, "0 2 * * *")
-        del os.environ["IPTV_CRON_SCHEDULE"]
-
-
-class TestCronSchedule(unittest.TestCase):
-    """Test CronSchedule dataclass."""
-
-    def test_cron_schedule_creation(self):
-        """Test CronSchedule is created with correct values."""
-        schedule = CronSchedule(expression="0 2 * * *", enabled=True)
-        self.assertEqual(schedule.expression, "0 2 * * *")
-        self.assertTrue(schedule.enabled)
-
-    def test_cron_schedule_disabled(self):
-        """Test CronSchedule disabled state."""
-        schedule = CronSchedule(expression="0 2 * * *", enabled=False)
-        self.assertFalse(schedule.enabled)
+        try:
+            sched = create_scheduler()
+            self.assertEqual(sched.cron_expression, "0 2 * * *")
+        finally:
+            if old_val is not None:
+                os.environ["IPTV_CRON_SCHEDULE"] = old_val
+            else:
+                os.environ.pop("IPTV_CRON_SCHEDULE", None)
 
 
 if __name__ == "__main__":
