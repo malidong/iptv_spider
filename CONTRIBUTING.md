@@ -42,3 +42,40 @@
 - Packaging checks must pass.
 - At least one reviewer approval is required.
 
+## Local Development
+
+### Pre-commit Checks
+
+Before committing or pushing, run local checks to avoid CI failures:
+
+```powershell
+# PowerShell (recommended)
+pwsh -File scripts/pre-commit-check.ps1
+```
+
+The script will:
+1. Install flake8 and pytest (if not installed)
+2. Run lint check with flake8
+3. Run all tests with pytest
+4. Exit with error if any check fails
+
+### Manual Commands
+
+If you prefer running commands directly:
+
+```bash
+# Install dependencies
+uv pip install flake8 pytest
+
+# Run lint
+uv run flake8 src/ tests/
+
+# Run tests
+uv run pytest tests/ -v
+```
+
+### Requirements
+
+- [uv](https://github.com/astral-sh/uv) must be installed
+- All checks must pass before `git commit` or `git push`
+
