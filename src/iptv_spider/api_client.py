@@ -50,7 +50,7 @@ class APIClient:
                     headers=self.headers,
                     timeout=self.timeout,
                 )
-                if response.status_code < 400:
+                if response.ok:
                     return SyncResult(
                         success=True,
                         status_code=response.status_code,
