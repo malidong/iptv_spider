@@ -33,6 +33,17 @@ class TestAPIClient(unittest.TestCase):
         self.assertIsNone(client.token)
         self.assertNotIn("Authorization", client.headers)
 
+    def test_invalid_endpoint_protocol(self):
+        """Test invalid endpoint protocol raises ValueError."""
+        with self.assertRaises(ValueError) as ctx:
+            APIClient(endpoint="file:///etc/passwd")
+        self.assertIn("http:// or https://", str(ctx.exception))
+
+    def test_https_endpoint(self):
+        """Test HTTPS endpoint is accepted."""
+        client = APIClient(endpoint="https://example.com/api")
+        self.assertEqual(client.endpoint, "https://example.com/api")
+
 
 class TestSyncExporter(unittest.TestCase):
     """Test sync exporter."""
@@ -114,18 +125,6 @@ class TestSyncExporter(unittest.TestCase):
         errors = exporter.sync_and_backup(channels, f"test_{id(self)}.json")
 
         self.assertEqual(len(errors), 0)
-
-
-class TestSyncExporterWithMock(unittest.TestCase):
-    """Test sync exporter with mock server."""
-
-    def setUp(self):
-        self.temp_dir = tempfile.mkdtemp()
-
-    def tearDown(self):
-        import shutil
-
-        shutil.rmtree(self.temp_dir, ignore_errors=True)
 
 
 if __name__ == "__main__":

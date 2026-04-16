@@ -30,6 +30,8 @@ class APIClient:
         max_retries: int = 3,
         timeout: int = 30,
     ):
+        if not endpoint.startswith(("http://", "https://")):
+            raise ValueError("endpoint must start with http:// or https://")
         self.endpoint = endpoint
         self.token = token
         self.max_retries = max_retries
