@@ -30,7 +30,20 @@ class TemplateRenderer:
     def render_docker_compose(
         self, channels: dict[str, dict], output_path: str
     ) -> list[ExportError]:
-        """Render docker-compose template with channel data."""
+        """Render docker-compose.yml template with channel data.
+
+        Generates a docker-compose.yml file with each channel as a service.
+        Channel names are sanitized to valid service names.
+
+        Args:
+            channels: Dict mapping channel names to channel info dicts.
+                Required keys in each info dict: 'media_url'
+                Optional keys: 'resolution', 'fps'
+            output_path: Path where the docker-compose.yml will be written.
+
+        Returns:
+            List of ExportError if validation fails, empty list on success.
+        """
         errors = []
 
         if not channels:
