@@ -6,7 +6,6 @@ Supports variable substitution and validation.
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 
 @dataclass
@@ -28,11 +27,8 @@ class ComposeContent:
 class TemplateRenderer:
     """Renders templates with channel data."""
 
-    def __init__(self, template_path: str | None = None):
-        self.template_path = template_path
-
     def render_docker_compose(
-        self, channels: dict[str, Any], output_path: str
+        self, channels: dict[str, dict], output_path: str
     ) -> list[ExportError]:
         """Render docker-compose template with channel data."""
         errors = []
@@ -56,7 +52,7 @@ class TemplateRenderer:
 
         return errors
 
-    def _build_compose_content(self, channels: dict[str, Any]) -> ComposeContent:
+    def _build_compose_content(self, channels: dict[str, dict]) -> ComposeContent:
         """Build docker-compose.yml content from channels."""
         errors: list[ExportError] = []
 
@@ -81,13 +77,15 @@ class TemplateRenderer:
         services = []
         for name, info in channels.items():
             service_name = _sanitize_service_name(name)
+            safe_url = _escape_env_value(info.get("media_url", ""))
+            safe_name = _escape_env_value(name)
             services.append(
                 f"  {service_name}:\n"
                 f"    image: mythtv/mythtv:combined\n"
                 f"    container_name: {service_name}\n"
                 f"    environment:\n"
-                f"      - CHANNEL_URL={info.get('media_url', '')}\n"
-                f"      - CHANNEL_NAME={name}\n"
+                f"      - CHANNEL_URL={safe_url}\n"
+                f"      - CHANNEL_NAME={safe_name}\n"
                 f"    restart: unless-stopped\n"
             )
 
@@ -95,9 +93,14 @@ class TemplateRenderer:
         return ComposeContent(content=content, errors=[])
 
     def render_custom(
-        self, template: str, channels: dict[str, Any], output_path: str
+        self, template: str, channels: dict[str, dict], output_path: str
     ) -> list[ExportError]:
-        """Render custom template with channel data."""
+        """Render custom template with channel data.
+
+        For each channel, the template is rendered with that channel's data.
+        All placeholders ({{channel_name}}, {{media_url}}, {{resolution}}, {{fps}})
+        are replaced for each channel.
+        """
         errors: list[ExportError] = []
 
         if not template:
@@ -107,18 +110,22 @@ class TemplateRenderer:
             return errors
 
         try:
-            content = template
+            lines = []
             for name, info in channels.items():
-                content = content.replace("{{channel_name}}", name, 1)
-                content = content.replace("{{media_url}}", info.get("media_url", ""), 1)
+                content = template
+                content = content.replace("{{channel_name}}", name)
+                content = content.replace("{{media_url}}", info.get("media_url", ""))
                 content = content.replace(
-                    "{{resolution}}", str(info.get("resolution", "")), 1
+                    "{{resolution}}", str(info.get("resolution", ""))
                 )
-                content = content.replace("{{fps}}", str(info.get("fps", "")), 1)
+                content = content.replace("{{fps}}", str(info.get("fps", "")))
+                lines.append(content)
+
+            result = "\n".join(lines)
 
             Path(output_path).parent.mkdir(parents=True, exist_ok=True)
             with open(output_path, "w", encoding="utf-8") as f:
-                f.write(content)
+                f.write(result)
         except OSError as e:
             errors.append(ExportError(field="output_path", message=str(e)))
 
@@ -132,3 +139,8 @@ def _sanitize_service_name(name: str) -> str:
     name = re.sub(r"[^a-zA-Z0-9_-]", "_", name)
     name = re.sub(r"_+", "_", name)
     return name.lower()
+
+
+def _escape_env_value(value: str) -> str:
+    """Escape value for docker-compose environment variable."""
+    return value.replace("\n", "\\n").replace('"', '\\"')
