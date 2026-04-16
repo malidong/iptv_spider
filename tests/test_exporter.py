@@ -200,6 +200,15 @@ class TestDockerComposeOutput(unittest.TestCase):
         content = Path(output_path).read_text()
         self.assertIn('CHANNEL_NAME=Test \\"Channel\\"', content)
 
+    def test_output_path_handling(self):
+        """Test output path validation and error handling."""
+        channels = {"Test": {"media_url": "http://test.com"}}
+
+        valid_path = str(Path(self.temp_dir) / "output.yml")
+        errors = self.renderer.render_docker_compose(channels, valid_path)
+        self.assertEqual(errors, [])
+        self.assertTrue(Path(valid_path).exists())
+
 
 if __name__ == "__main__":
     unittest.main()
