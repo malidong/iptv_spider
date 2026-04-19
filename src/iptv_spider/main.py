@@ -9,6 +9,7 @@ and outputs the best-performing channels to both a JSON file and an M3U file.
 """
 
 import os
+import sys
 from dataclasses import dataclass, field
 from datetime import datetime
 import json
@@ -261,8 +262,14 @@ def entrypoint(argv: list[str] | None = None) -> RunStats:
     """
     Entry point for the IPTV Spider program.
     """
+    from iptv_spider.health import run_health_check
+
     # Parse command-line arguments and merge with environment defaults.
     config = build_effective_runtime_config(argv=argv)
+
+    if config.get("health"):
+        success = run_health_check(verbose=config.get("verbose", False))
+        sys.exit(0 if success else 1)
 
     # Run the main program with provided arguments
     logger.info("Starting IPTV Spider...")

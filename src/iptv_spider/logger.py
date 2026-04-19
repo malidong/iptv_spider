@@ -17,10 +17,14 @@ The logging setup supports two handlers:
 - StreamHandler: Displays logs at DEBUG level and higher on the console.
 """
 
+import json
 import logging
 import os
-from datetime import datetime
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
+
 from iptv_spider.utils import get_config_dir
 
 # Log directory and file name
@@ -57,3 +61,47 @@ console_handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(file_handler)
     logger.addHandler(console_handler)
+
+
+def create_run_id() -> str:
+    """Create a unique run ID for tracking."""
+    return uuid.uuid4().hex[:8]
+
+
+def log_structured(
+    level: int,
+    message: str,
+    run_id: str = "",
+    stage: str = "",
+    source: str = "",
+    latency_ms: float | None = None,
+    **kwargs: Any,
+) -> None:
+    """Log with structured fields for machine parsing."""
+    extra = {
+        "run_id": run_id,
+        "stage": stage,
+        "source": source,
+        "latency_ms": latency_ms,
+    }
+    extra = {k: v for k, v in extra.items() if v}
+    logger.log(level, message, extra=extra)
+
+
+def log_event(
+    event: str,
+    run_id: str = "",
+    stage: str = "",
+    status: str = "info",
+    **kwargs: Any,
+) -> None:
+    """Log structured event for observability."""
+    data = {
+        "event": event,
+        "run_id": run_id,
+        "stage": stage,
+        "status": status,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+    data.update({k: v for k, v in kwargs.items() if v is not None})
+    logger.info(json.dumps(data))

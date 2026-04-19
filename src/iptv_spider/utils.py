@@ -335,6 +335,18 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         help="ffprobe timeout in seconds. Defaults to disabled/auto (None)."
     )
 
+    parser.add_argument(
+        "--health",
+        action="store_true",
+        help="Run health check and exit."
+    )
+
+    parser.add_argument(
+        "--verbose",
+        action="store_true",
+        help="Enable verbose output."
+    )
+
     return parser
 
 
