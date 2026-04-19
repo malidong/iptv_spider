@@ -4,7 +4,7 @@ Unit tests for logger module.
 """
 
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 from iptv_spider.logger import create_run_id, log_structured, log_event
 

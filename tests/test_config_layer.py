@@ -1,4 +1,3 @@
-import sys
 import unittest
 
 from src.iptv_spider.utils import build_effective_runtime_config, sanitize_runtime_config
