@@ -71,6 +71,14 @@ iptv-spider --output_with_epg --epg_url "http://epg.51zmt.top:8000/e.xml"
 iptv-spider --dedup_mode url_fingerprint --dedup_keep first --cache_enabled --cache_ttl_hours 24
 ```
 
+#### Run Health Check:
+
+```bash
+iptv-spider --health
+iptv-spider --health --verbose
+IPTV_HEALTH_CHECK_NETWORK=0 iptv-spider --health  # Skip network check
+```
+
 ### 3️⃣ Run With Docker Compose
 
 ```bash
@@ -118,6 +126,8 @@ The following command-line arguments are supported:
 | `--cache_ttl_hours`  | `24`                                         | Cache TTL in hours.                                              |
 | `--cache_file`       | `~/.iptv-spider/tested_channels.json`        | Path to speed cache file.                                        |
 | `--cache_clear`      | `False`                                      | Clear speed cache before run.                                    |
+| `--health`         | `False`                                      | Run health check and exit.                                    |
+| `--verbose`        | `False`                                      | Enable verbose output (used with --health).                         |
 
 ---
 
@@ -300,6 +310,7 @@ When pushing to GitHub, automated tests run on:
 - ✅ **Incremental Speed Cache**: Reuse recent speed test results to speed up runs.
 - ✅ **Error Tracking**: RunStats and RunError dataclasses for error tracking.
 - ✅ **Error Categorization**: Errors categorized as transient vs permanent with actionable logging.
+- ✅ **Observability Baseline**: Structured logging (JSON), health checks, run IDs for tracing.
 
 ---
 
