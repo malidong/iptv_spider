@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from src.iptv_spider.utils import build_effective_runtime_config, sanitize_runtime_config
@@ -70,6 +71,17 @@ class TestConfigLayer(unittest.TestCase):
         self.assertIn("url_or_path", sanitized)
         self.assertIn("epg_url", sanitized)
         self.assertNotIn("access_token", sanitized)
+
+    def test_health_option_parsing(self):
+        config = build_effective_runtime_config(argv=["--health"])
+        self.assertTrue(config["health"])
+
+        config = build_effective_runtime_config(argv=["--health", "--verbose"])
+        self.assertTrue(config["health"])
+        self.assertTrue(config["verbose"])
+
+        config = build_effective_runtime_config(argv=[])
+        self.assertFalse(config.get("health", False))
 
 
 if __name__ == "__main__":
