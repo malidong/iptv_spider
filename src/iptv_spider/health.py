@@ -3,8 +3,13 @@
 Health check module for IPTV Spider.
 
 Provides health check command/endpoint for runtime readiness and diagnostics.
+
+Usage:
+    iptv-spider --health [--verbose]
+    IPTV_HEALTH_CHECK_NETWORK=0 iptv-spider --health  # Skip network check
 """
 
+import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -42,19 +47,24 @@ def check_system() -> HealthStatus:
     )
 
 
-def check_network() -> HealthStatus:
-    """Check network connectivity."""
+def check_network(enabled: bool = True) -> HealthStatus | None:
+    """Check network connectivity. Returns None if disabled via env var."""
+    if not enabled:
+        return None
+
+    error_msg: str | None = None
     try:
         import requests
         response = requests.get("https://httpbin.org/get", timeout=5)
         connected = response.status_code == 200
     except Exception as e:
         connected = False
+        error_msg = str(e)
 
     return HealthStatus(
         status="healthy" if connected else "unhealthy",
         component="network",
-        message=None if connected else str(e),
+        message=error_msg,
     )
 
 
@@ -76,7 +86,14 @@ def check_disk() -> HealthStatus:
 
 def run_health_check(verbose: bool = False) -> bool:
     """Run all health checks and return overall status."""
-    checks = [check_system(), check_network(), check_disk()]
+    network_enabled = os.environ.get("IPTV_HEALTH_CHECK_NETWORK", "1") != "0"
+    checks = [check_system()]
+
+    network_result = check_network(network_enabled)
+    if network_result:
+        checks.append(network_result)
+
+    checks.append(check_disk())
 
     all_healthy = all(c.status == "healthy" for c in checks)
 

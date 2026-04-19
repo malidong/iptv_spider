@@ -68,17 +68,6 @@ def create_run_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-class StructuredLogRecord(logging.LogRecord):
-    """Extended log record with structured fields."""
-
-    def __init__(self, *args: Any, **kwargs: Any):
-        super().__init__(*args, **kwargs)
-        self.run_id: str = ""
-        self.stage: str = ""
-        self.source: str = ""
-        self.latency_ms: float | None = None
-
-
 def log_structured(
     level: int,
     message: str,
