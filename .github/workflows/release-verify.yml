@@ -1,0 +1,60 @@
+# CI pipeline for packaging and container verification
+
+name: Release Verify
+
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  build-verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Validate package metadata
+        run: |
+          python -m pip install build
+          python -m build --no-isolation --wheel .
+          ls -la dist/
+
+      - name: Install package
+        run: |
+          pip install dist/*.whl
+          iptv-spider --help
+
+  container-verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build container
+        run: docker build -t iptv-spider:test .
+
+      - name: Verify container runs
+        run: |
+          docker run --rm iptv-spider:test -- --health
+
+      - name: Cleanup
+        run: docker rmi iptv-spider:test || true
