@@ -46,7 +46,7 @@ jobs:
 
       - name: Verify container runs
         run: |
-          docker run --rm iptv-spider:test --health
+          docker run --rm iptv-spider:test -- --health
 
       - name: Cleanup
         run: docker rmi iptv-spider:test
