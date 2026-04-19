@@ -257,7 +257,7 @@ uv sync --extra test
 uv run pytest tests/
 ```
 
-The project includes 11 comprehensive test cases covering:
+The project includes 91 comprehensive test cases covering:
 - Channel initialization and speed testing
 - M3U8 playlist parsing
 - Configuration loading and validation
@@ -298,6 +298,8 @@ When pushing to GitHub, automated tests run on:
 - ✅ **EPG Support**: Optional `url-tvg` injection into M3U output header.
 - ✅ **URL Fingerprint Dedup**: Deduplicate duplicate streams by normalized URL.
 - ✅ **Incremental Speed Cache**: Reuse recent speed test results to speed up runs.
+- ✅ **Error Tracking**: RunStats and RunError dataclasses for error tracking.
+- ✅ **Error Categorization**: Errors categorized as transient vs permanent with actionable logging.
 
 ---
 
