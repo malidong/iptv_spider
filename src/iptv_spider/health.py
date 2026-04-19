@@ -30,12 +30,12 @@ def check_system() -> HealthStatus:
     issues: list[str] = []
 
     try:
-        import requests
+        import requests  # noqa: F401
     except ImportError:
         issues.append("requests")
 
     try:
-        import m3u8
+        import m3u8  # noqa: F401
     except ImportError:
         issues.append("m3u8")
 
