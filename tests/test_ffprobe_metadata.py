@@ -111,7 +111,7 @@ class TestFFprobeMetadata(TestCase):
             request_timeout=10,
         )
 
-        json_path = Path(stats["output_files"][0])
+        json_path = Path(stats.output_files[0])
         with open(json_path, "r", encoding="utf-8") as f:
             payload = json.load(f)
 

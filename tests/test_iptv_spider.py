@@ -14,7 +14,7 @@ from unittest.mock import patch, MagicMock
 from src.iptv_spider.m3u import M3U8
 from src.iptv_spider.channel import Channel
 from src.iptv_spider.utils import arg_parser, get_config_dir, url_fingerprint
-from src.iptv_spider.main import main
+from src.iptv_spider.main import main, RunStats
 
 
 class TestChannel(unittest.TestCase):
@@ -387,14 +387,12 @@ http://example.com/cctv2.m3u8
             request_timeout=30,
         )
 
-        self.assertIsInstance(stats, dict)
-        self.assertIn("total_channels_filtered", stats)
-        self.assertIn("best_channels_tested", stats)
-        self.assertIn("valid_channels_output", stats)
-        self.assertIn("speed_threshold_mb", stats)
-        self.assertIn("deduplicated_count", stats)
-        self.assertIn("dedup_trace", stats)
-        self.assertIn("output_files", stats)
+        self.assertIsInstance(stats, RunStats)
+        self.assertEqual(stats.total_channels_filtered, 2)
+        self.assertEqual(stats.best_channels_tested, 0)
+        self.assertEqual(stats.valid_channels_output, 0)
+        self.assertEqual(stats.speed_threshold_mb, 0.3)
+        self.assertEqual(stats.deduplicated_count, 0)
 
     @patch("src.iptv_spider.main.M3U8")
     def test_main_writes_epg_header(self, mock_m3u8):
