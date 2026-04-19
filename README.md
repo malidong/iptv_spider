@@ -97,11 +97,45 @@ Default mount points:
 - `./cache -> /data/cache`
 - `./logs -> /data/logs`
 
-You can change host paths with:
-- `HOST_INPUT_DIR`
-- `HOST_OUTPUT_DIR`
-- `HOST_CACHE_DIR`
-- `HOST_LOG_DIR`
+You can change host paths with environment variables:
+- `HOST_INPUT_DIR`, `HOST_OUTPUT_DIR`, `HOST_CACHE_DIR`, `HOST_LOG_DIR`
+
+#### 4️⃣ Scheduling with Cron
+
+Set up scheduled runs using Docker or external cron:
+
+```yaml
+# docker-compose.yaml
+services:
+  iptv-spider:
+    image: iptv-spider:latest
+    environment:
+      - IPTV_SPIDER_CRON_SCHEDULE=0 2 * * *  # Daily at 2 AM
+      - IPTV_SPIDER_URL_OR_PATH=https://example.com/playlist.m3u
+      - IPTV_SPIDER_FILTER=CCTV
+    volumes:
+      - ./output:/data/output
+      - ./cache:/data/cache
+```
+
+Or use with host docker and cron:
+
+```bash
+# Add to crontab
+0 2 * * * docker run --rm \
+  -v $(pwd)/output:/data/output \
+  -v $(pwd)/cache:/data/cache \
+  -e IPTV_SPIDER_URL_OR_PATH=https://example.com/playlist.m3u \
+  iptv-spider:latest
+```
+
+#### 5️⃣ Health Checks
+
+```bash
+# Run health check inside container
+docker run --rm iptv-spider:latest --health
+docker run --rm iptv-spider:latest --health --verbose
+```
 
 ---
 
@@ -128,6 +162,39 @@ The following command-line arguments are supported:
 | `--cache_clear`      | `False`                                      | Clear speed cache before run.                                    |
 | `--health`         | `False`                                      | Run health check and exit.                                    |
 | `--verbose`        | `False`                                      | Enable verbose output (used with --health).                         |
+
+---
+
+## 🔧 Environment Variables
+
+All CLI parameters can be set via environment variables with the `IPTV_SPIDER_` prefix:
+
+| Variable | Description |
+|----------|------------|
+| `IPTV_SPIDER_URL_OR_PATH` | M3U8 source URL or path |
+| `IPTV_SPIDER_FILTER` | Channel name regex pattern |
+| `IPTV_SPIDER_OUTPUT_DIR` | Output directory |
+| `IPTV_SPIDER_SPEED_THRESHOLD_MB` | Minimum speed (MB/s) |
+| `IPTV_SPIDER_SPEED_LIMIT_MB` | Speed limit for early termination |
+| `IPTV_SPIDER_MAX_RETRIES` | Max retry attempts |
+| `IPTV_SPIDER_REQUEST_TIMEOUT` | HTTP timeout (seconds) |
+| `IPTV_SPIDER_EPG_URL` | EPG URL for M3U header |
+| `IPTV_SPIDER_DEDUP_MODE` | Dedup mode (`url_fingerprint`, `none`) |
+| `IPTV_SPIDER_DEDUP_KEEP` | Keep strategy (`first`, `fastest`) |
+| `IPTV_SPIDER_CACHE_ENABLED` | Enable cache (`true`, `false`) |
+| `IPTV_SPIDER_CACHE_TTL_HOURS` | Cache TTL in hours |
+| `IPTV_SPIDER_CRON_SCHEDULE` | Cron expression for scheduler |
+| `IPTV_SPIDER_LOCK_FILE` | Lock file path for scheduler |
+| `IPTV_HEALTH_CHECK_NETWORK` | Enable network check (`0` to disable) |
+
+### Example: Using Environment Variables
+
+```bash
+export IPTV_SPIDER_URL_OR_PATH="https://example.com/playlist.m3u"
+export IPTV_SPIDER_FILTER="CCTV"
+export IPTV_SPIDER_SPEED_THRESHOLD_MB="0.5"
+iptv-spider
+```
 
 ---
 
@@ -394,3 +461,36 @@ This project is licensed under the [MIT License](LICENSE.txt).
 - **GitHub**: [malidong/iptv_spider](https://github.com/malidong/iptv_spider)
 - **PyPI**: [iptv-spider](https://pypi.org/project/iptv-spider/)
 - **Bug Reports**: [GitHub Issues](https://github.com/malidong/iptv_spider/issues)
+
+---
+
+## 🔄 Migration from v0.4.0
+
+### New Features in v0.5.0
+
+- **Health Checks**: Run `--health` to verify system readiness
+- **Structured Logging**: JSON logs with run IDs for tracing
+- **Cron Scheduler**: Prevent overlapping runs with lock mechanism
+- **Template Export**: Docker Compose and custom templates
+- **Quality Score**: Rule-based channel ranking
+- **Smart Dedup**: URL fingerprint deduplication
+
+### Breaking Changes
+
+- None - v0.5.0 is backward compatible with v0.4.0
+
+### New Environment Variables
+
+| Variable | Description |
+|----------|------------|
+| `IPTV_SPIDER_CRON_SCHEDULE` | Cron expression for scheduled runs |
+| `IPTV_SPIDER_LOCK_FILE` | Lock file path (default: `.iptv_spider.lock`) |
+| `IPTV_HEALTH_CHECK_NETWORK` | Network check (`0` to disable) |
+
+### New CLI Flags
+
+| Flag | Description |
+|------|------------|
+| `--health` | Run health check and exit |
+| `--verbose` | Enable verbose output |
+| `--cache_clear` | Clear speed cache before run |
