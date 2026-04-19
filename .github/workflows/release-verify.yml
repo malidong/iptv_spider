@@ -15,6 +15,10 @@ on:
 jobs:
   build-verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -37,6 +41,10 @@ jobs:
 
   container-verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,4 +57,4 @@ jobs:
           docker run --rm iptv-spider:test -- --health
 
       - name: Cleanup
-        run: docker rmi iptv-spider:test
+        run: docker rmi iptv-spider:test || true
