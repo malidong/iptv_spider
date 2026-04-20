@@ -26,5 +26,4 @@ RUN pip install --no-cache-dir .
 
 USER app
 
-ENTRYPOINT ["iptv-spider"]
-CMD []
+CMD ["iptv-spider"]
