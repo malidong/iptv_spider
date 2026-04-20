@@ -8,7 +8,8 @@ Note: The actual cron schedule evaluation is handled by an external cron system
 mechanism to prevent overlapping runs when scheduled.
 
 Usage:
-    export IPTV_CRON_SCHEDULE="0 2 * * *"  # Run daily at 2 AM
+    export IPTV_SPIDER_CRON_SCHEDULE="0 2 * *"  # Run daily at 2 AM
+    # Or use legacy: IPTV_CRON_SCHEDULE
 
     # In your cron job or scheduler:
     scheduler = create_scheduler()
@@ -31,13 +32,21 @@ logger = logging.getLogger(__name__)
 
 LOCK_FILE = ".iptv_spider.lock"
 
+ENV_PREFIX = "IPTV_SPIDER_"
+ENV_PREFIX_LEGACY = "IPTV_"
+
+
+def _get_env(key: str, default: str | None = None) -> str | None:
+    """Get env var with support for both IPTV_SPIDER_ and IPTV_ prefixes."""
+    return os.environ.get(ENV_PREFIX + key) or os.environ.get(ENV_PREFIX_LEGACY + key) or default
+
 
 class Scheduler:
     """Scheduler that runs IPTV Spider on a cron schedule."""
 
     def __init__(self, cron_expression: str | None = None):
         self.cron_expression = cron_expression
-        lock_path = os.environ.get("IPTV_LOCK_FILE", LOCK_FILE)
+        lock_path = _get_env("LOCK_FILE", LOCK_FILE)
         self.lock_file = Path(lock_path)
 
     def should_run(self) -> bool:
@@ -116,8 +125,8 @@ def create_scheduler() -> Scheduler:
     """Create scheduler from environment variables.
 
     Environment variables:
-        IPTV_CRON_SCHEDULE: CRON expression (e.g., "0 2 * * *")
-        IPTV_LOCK_FILE: Path to lock file (optional, defaults to .iptv_spider.lock)
+        IPTV_SPIDER_CRON_SCHEDULE or IPTV_CRON_SCHEDULE: CRON expression (e.g., "0 2 * * *")
+        IPTV_SPIDER_LOCK_FILE or IPTV_LOCK_FILE: Path to lock file (optional)
     """
-    cron_expr = os.environ.get("IPTV_CRON_SCHEDULE")
+    cron_expr = _get_env("CRON_SCHEDULE")
     return Scheduler(cron_expression=cron_expr)

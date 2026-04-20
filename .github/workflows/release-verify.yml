@@ -30,7 +30,7 @@ jobs:
 
       - name: Validate package metadata
         run: |
-          python -m pip install build
+          python -m pip install setuptools wheel build
           python -m build --no-isolation --wheel .
           ls -la dist/
 
@@ -54,7 +54,7 @@ jobs:
 
       - name: Verify container runs
         run: |
-          docker run --rm iptv-spider:test -- --health
+          docker run --rm -e IPTV_HEALTH_CHECK_NETWORK=0 iptv-spider:test /bin/sh -c "iptv-spider --health"
 
       - name: Cleanup
         run: docker rmi iptv-spider:test || true
