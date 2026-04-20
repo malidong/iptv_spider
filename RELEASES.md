@@ -6,7 +6,7 @@
 - [x] All 106 tests pass
 - [x] Lint passes (flake8)
 - [x] No security vulnerabilities (CodeQL)
-- [x] Documentation updated (README, CHANGELOG)
+- [x] Documentation updated (README, CHANGELOG, RELEASES.md)
 
 ### Test Matrix Status
 - [x] Python 3.11 - PASSED
@@ -29,7 +29,7 @@
 - [x] Container runs health check (`iptv-spider --health`)
 - [x] All dependencies declared in pyproject.toml
 
-### v0.5.0 Milestone Issues (13/15 completed)
+### v0.5.0 Milestone Issues (14/15 completed)
 - [x] #2 Container baseline (Dockerfile + compose + volume contracts)
 - [x] #3 Unified config layer (CLI > ENV > defaults)
 - [x] #4 FFprobe integration
@@ -38,6 +38,12 @@
 - [x] #7 Templated export engine
 - [x] #8 Custom API sync exporter
 - [x] #9 Cron scheduler
+- [x] #10 Resilience improvements
+- [x] #11 Observability baseline
+- [x] #12 CI pipeline updates
+- [x] #13 Documentation refresh
+- [x] #14 Release checklist (this PR)
+- [ ] #15 Roadmap tracking (continuous task)
 - [x] #10 Resilience improvements
 - [x] #11 Observability baseline
 - [x] #12 CI pipeline updates
