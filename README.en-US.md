@@ -13,6 +13,13 @@ specific criteria, and output the best-performing stream for each channel based 
 - **M3U8 File Handling**: Download from a remote URL or read from a local path.
 - **Channel Filtering**: Use regular expressions to filter channel names.
 - **Speed Test and Optimization**: Automatically test stream speeds and select the best source for each channel.
+- **Smart Deduplication**: Deduplicate by URL fingerprint to avoid duplicate streams.
+- **Incremental Speed Cache**: Reuse recent speed test results to speed up runs.
+- **EPG Support**: Optional `url-tvg` injection into M3U output header.
+- **Quality Score**: Rule-based channel ranking.
+- **Health Checks**: Run `--health` to verify system readiness.
+- **Cron Scheduler**: Prevent overlapping runs with lock mechanism.
+- **Template Export**: Docker Compose and custom templates.
 - **Multi-format Output**:
     - Save results as a JSON file.
     - Generate a standard M3U playlist with the best channels.
